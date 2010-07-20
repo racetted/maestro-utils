@@ -1,0 +1,47 @@
+#!/bin/ksh
+#
+usage='usage: node_source -n node'
+
+msgjob=' node source not available: '
+
+if [ "${SEQ_EXP_HOME}" == "" ]; then
+   echo "ERROR: SEQ_EXP_HOME not defined!\n"
+   exit 1
+fi
+
+# echo usage if no parameters are passed
+test $# = 0 && echo $usage && exit 1
+
+case $1
+in
+  -h)# display help
+     echo "$usage"
+     exit 0
+     ;;
+  -n)
+     if [ "$2" ]
+     then
+       node=$2
+     else
+       echo $usage
+       exit 1
+     fi
+     ;;
+   *)# default
+     echo "$usage"
+     exit 1
+     ;;
+esac
+
+if [[ "${SEQ_BIN}" = "" ]]; then
+   test $(which nodeinfo) || echo nodeinfo not found; exit 1
+   taskPath=$(nodeinfo -n $node -f task)
+else
+   taskPath=$($SEQ_BIN/nodeinfo -n $node -f task)
+   $SEQ_BIN/nodeinfo -n $node -f task
+fi
+
+eval taskPath=${taskPath##*=}
+if [[ -r ${taskPath} ]] ; then
+   cat ${taskPath}
+fi

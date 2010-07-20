@@ -1,0 +1,7 @@
+Package: maestro-utils
+Version: 1.0
+Platform: all
+Maintainer: afsisul
+BuildInfo:
+Description: maestro utilities
+

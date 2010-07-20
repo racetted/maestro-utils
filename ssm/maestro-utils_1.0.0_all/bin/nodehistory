@@ -1,0 +1,107 @@
+#!/bin/ksh
+#
+usage='usage: nodehistory -n node [-h,-sdate startdate, -edate enddate, -step hours]'
+
+msgjob=' node config not available: '
+
+arguments=$*
+
+eval `cclargs_lite $0 \
+  -n        ""                      ""         "[Node         ]" \
+  -h        ""                      ""         "[Display help       ]" \
+  -l        ""                      ""         "[Loop argument list ]" \
+  -sdate    "0"                     ""         "[Start date             ]" \
+  -edate    "99999999999999"        ""         "[End date  ]" \
+  -history  ""                      ""         "[Number of hours backwards from edate]" \
+  ++ $arguments`
+
+if [ "${SEQ_EXP_HOME}" == "" ]; then
+   echo "ERROR: SEQ_EXP_HOME not defined!\n"
+   exit 1
+fi
+
+if [ ! -d "${SEQ_EXP_HOME}" ]; then
+   echo "nodehistory error: Invalid path SEQ_EXP_HOME=$SEQ_EXP_HOME"
+   exit 1
+fi
+
+if [[ -n "${SEQ_BIN}" ]] ; then
+   nodeinfo=${SEQ_BIN}/nodeinfo
+else
+   nodeinfo=$(which nodeinfo)
+fi
+
+if [[ $n == "" ]]; then
+    echo "Node must be defined \n"
+    echo $Usage
+    exit 1
+fi
+
+if [[ $h != "" ]]; then
+   echo $Usage
+fi 
+
+if [[ $l != "" ]]; then
+   fullnode=`$nodeinfo -n $n -l $l -f node`
+   fullnode=`echo $fullnode | cut -d "=" -f2`
+   if [[ $fullnode = "" ]]; then
+       echo nodeinfo reported a problem - exitting.
+       exit 1
+   fi
+else
+   fullnode=$n
+fi
+
+# the node coming in has the following pattern
+# full_nodepath.ext_value...we separate the node from
+# the extension value
+nodeContainer=${fullnode%/*}
+nodeLeaf=${fullnode##*/}
+nodeExt=${nodeLeaf##*.}
+nodeLeaf=${nodeLeaf%.*}
+test $nodeExt = $nodeLeaf && nodeExt=""
+
+if [[ $history != "" ]]; then
+    sdate=$(r.date -V $(r.date $edate) -$history | cut -c 0-14)  
+fi
+
+### pad dates to 14 date characters by multiplying by base 10.
+sdate=`echo "$sdate*10^(14-${#sdate})"|bc`
+edate=`echo "$edate*10^(14-${#edate})"|bc`
+
+if [[ (${#sdate} > 14) || (${#edate} > 14) ]] ; then
+   echo "sdate=$sdate edate=$edate"
+   echo "Arguments too long. Exitting."
+   exit 1
+fi
+    
+
+#echo "nodeContainer : $nodeContainer"
+#echo "nodeLeaf : $nodeLeaf"
+#echo "nodeExt : $nodeExt"
+logFiles=$(ls ${SEQ_EXP_HOME}/logs/*_nodelog)
+
+for logFile in $logFiles
+do
+   dateLog=$(basename $logFile |cut -c 0-14) 
+   if [[ ( -r $logFile ) ]] ; then
+      if [[ ( ("$dateLog" > "$sdate" ) || ( "$dateLog" == "$sdate" ) ) && ( ("$dateLog" < "$edate" ) || ( "$dateLog" == "$edate"  )) ]]; then
+          logLeaf=${logFile##*/}
+          logDate=${logLeaf%_*}
+          # echo "Using log file $logFile"
+          echo "*** Datestamp=$logDate ***"
+          grep "SEQNODE=${nodeContainer}/${nodeLeaf}:" $logFile | grep ":SEQLOOP=${nodeExt}:" |
+          # the sed part does the following
+          # 1) remove the node part from the output
+          # 2) remove the node loop part from the output
+          # 3) combines msgtype&seqmsg content into message
+          sed -e "s,:SEQNODE=${nodeContainer}/${nodeLeaf}:, ," \
+          -e "s,:SEQLOOP=${nodeExt}:,," \
+          -e "s,MSGTYPE=,MESSAGE=," \
+          -e "s,SEQMSG=, ,"
+          echo ""
+      fi
+   else
+      echo "log file $logFile not found!"
+   fi
+done

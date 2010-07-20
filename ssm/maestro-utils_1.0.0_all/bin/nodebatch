@@ -1,0 +1,46 @@
+#!/bin/ksh
+
+arguments=$*
+
+eval `cclargs_lite $0 \
+  -n        ""                    ""                           "[Node         ]" \
+  -h        ""                    ""                           "[Display help       ]" \
+  -list     "0"                   "1"                          "[Show available batch files         ]" \
+  -l        ""                    ""                           "[Loop argument list ]" \
+  ++ $arguments`
+
+if [ ! -d "${SEQ_EXP_HOME}" ]; then
+   echo "nodetracer error: Invalid path SEQ_EXP_HOME=$SEQ_EXP_HOME"
+   exit 1
+fi
+
+if [[ -n "${SEQ_BIN}" ]] ; then
+   nodeinfo=${SEQ_BIN}/nodeinfo
+else
+   nodeinfo=$(which nodeinfo)
+fi
+
+if [[ $n == "" ]]; then
+    echo "Node must be defined"
+    exit 1
+fi
+
+if [[ $l != "" ]]; then
+   fullnode=`$nodeinfo -n $n -l $l -f node`
+   fullnode=`echo $fullnode | cut -d "=" -f2`
+else
+   fullnode=$n
+fi
+
+dir=${SEQ_EXP_HOME}/sequencing/batch$(dirname ${fullnode})
+
+if [[ $list -eq 1 ]]; then
+   ls -lrt $dir/$(basename $fullnode).*
+else
+   batchfile=$(ls -rt1 $dir/$(basename $fullnode).* | tail -1)
+   if [[ -e $batchfile ]] ; then 
+      cat $batchfile
+   else 
+      echo $fullnode 'batch file not available'
+   fi
+fi
