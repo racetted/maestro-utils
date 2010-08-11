@@ -153,7 +153,7 @@ class T_CfgList(list):
 		## sys.exit('Bad cfg file')
 
                                         # This syntax allows conversion to a dict
-            self.append((s_var, (s_val, s_type)))
+            self.append((s_var.lstrip(), (s_val, s_type)))
 
 
 
@@ -433,8 +433,10 @@ def main():
         print "\nError: an output file name (--output) is required\n"
         parser.print_help()
         sys.exit(1)
-        
-    MyChain = T_Chain(options.expPath, options.nodeName, options.out)
+    
+
+
+    MyChain = T_Chain(options.expPath, options.nodeName.lstrip("/"), options.out)
     MyChain.DotTheChain() 
     
     if errorFlag:
