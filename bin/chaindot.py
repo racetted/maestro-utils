@@ -327,7 +327,7 @@ class T_Chain:
 	        for s_line in s_input:
                     s_line.lstrip()             # Ignore initial white space
                                                 # Keep only non-comment lines
-                    if len(s_line) < 2 or s_line[0] == '#':
+                    if len(s_line) < 2 :  ##or s_line[0] == '#':
                        continue
                     self.o_dotout.write(s_line)
 		return ()
