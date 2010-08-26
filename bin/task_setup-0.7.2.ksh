@@ -24,7 +24,8 @@ checkarg()
 }
 
 # Check command line arguments for the configuration file and task directory
-set -A argv NULL $*
+arglist=$*
+set -A argv NULL ${arglist}
 task_setup_cfgfile=
 TASK_BASEDIR=
 i=0
@@ -54,7 +55,7 @@ tmpfile=/tmp/task_setup_env$$
 set >${tmpfile}
 
 # Call task setup to generate task directory structure
-task_setup-0.7.1.py --environment ${tmpfile} $*
+task_setup-0.7.2.py --environment ${tmpfile} ${arglist}
 
 # Export 
 rm -f ${tmpfile}
