@@ -4,7 +4,6 @@
 # shell before wrapping a call to task_setup.py.  It should
 # be executed in the current shell using `. task_setup.ksh [ARGS]`
 # where all ARGS are passed directly to the task setup utility.
-set -e
 
 # Define subroutine to check for matching arguments
 checkarg()
@@ -25,11 +24,12 @@ checkarg()
 
 # Check command line arguments for the configuration file and task directory
 arglist=$*
-i=0
-for arg in ${arglist} ; do
-  argv[$i]=${arg}
-  i=$((i+1))
-done
+. o.set_array.dot argv $arglist
+#i=0
+#for arg in ${arglist} ; do
+#  argv[$i]=${arg}
+#  i=$((i+1))
+#done
 task_setup_cfgfile=
 TASK_BASEDIR=
 i=0
