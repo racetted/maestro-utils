@@ -678,7 +678,8 @@ class Config(dict):
                                     link_type = "copied"
                                 else:
                                     if entry["create_target"]:
-                                        status = self._createTarget(entry,true_src_file)
+                                        status_create = self._createTarget(entry,true_src_file)
+                                        if status == self.ok: status = status_create
                                         true_src_file = self._getTruePath(true_src_file)
                                     if os.path.islink(dest_file):
                                         print "Warning: overwriting existing link to "+dest_file+" with "+true_src_file

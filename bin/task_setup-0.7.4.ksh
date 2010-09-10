@@ -59,7 +59,7 @@ tmpfile=/tmp/task_setup_env$$
 set >${tmpfile}
 
 # Call task setup to generate task directory structure
-${SEQ_UTILS_BIN}/task_setup-0.7.3.py --environment ${tmpfile} ${arglist}
+${SEQ_UTILS_BIN}/task_setup-0.7.4.py --environment ${tmpfile} ${arglist}
 
 # Export 
 rm -f ${tmpfile}
