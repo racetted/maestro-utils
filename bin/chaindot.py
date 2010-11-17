@@ -62,6 +62,7 @@ unified sequencer."""
 # v1_00   Blezius J.W.    May 20 2009 first release
 # v1_01   Racette D.      July 14 2010 Modified argument passing
 # v1_02   Racette D.      July 21 2010 Modified experiment structure
+# v1_03   Racette D.      Aug. 24 2010 Removing Scoping
 
 
 from xml.dom              import expatbuilder
@@ -72,124 +73,6 @@ import optparse
 
 l_debug = False
 errorFlag = False
-
-
-def filter_interface((s_var, (s_val, s_type))):
-    return s_type.lower() == 'interface'
-
-
-def filter_private((s_var, (s_val, s_type))):
-    return s_type.lower() == 'private'
-
-
-def filter_public((s_var, (s_val, s_type))):
-    return s_type.lower() == 'public'
-
-
-class T_CfgList(list):
-    """This list class exists to permit simple filtering of its items."""
-
-    def __init__(self, s_pathCfg='', s_nodeType=''):
-        """As input, the initializer accepts a string with this syntax on each
-        line:
-                 type Name=Value
-        where type is one of
-                     public
-                     private
-                     interface
-        Extra white space between symbols is tolerated.
-        """
-
-	global errorFlag
-
-        # Massage the cfg-file format
-        o_cfgLinesFiltered_List = []
-	
-	if not s_pathCfg:  return None
-
-        try:
-            o_cfgFile = open(s_pathCfg, 'r')
-            s_input = o_cfgFile.readlines()
-            o_cfgFile.close()
-
-        except IOError:
-            # It appears that this node does not have a cfg file
-            print " chaindot.py WARNING: could not open " + s_pathCfg 
-	    return None
-
-        for s_line in s_input:
-            s_line.lstrip()             # Ignore initial white space
-
-                                        # Keep only non-comment lines
-                                        # (Line-feed character is always present)
-            if len(s_line) < 2 or s_line[0] == '#':
-                continue
-
-            s_line = s_line[:-1]        # Remove the line feed
-
-            n_firstWhite = s_line.find(' ')    # Remember first white space
-            #s_noWhite = s_line.replace(' ','') # Remove all non-significant white
-                                        # Use ' ' and '=' to split line into 3
-            #s_type=s_noWhite[0 : n_firstWhite]
-	    s_type=s_line[0 : n_firstWhite]
-	    
-	    if not s_type.lower() in ["interface", "public", "private"]:
-	        print "chaindot.py ERROR: unrecognized type "+ s_type +" in a non module config file " + s_pathCfg 
-		errorFlag = True
-
-
-	    if s_nodeType != "MODULE" and s_type == "interface":
-	        print "chaindot.py ERROR: interface variable in a non module config file " + s_pathCfg 
-		errorFlag = True
-	        
-            try:
-                #(s_var, s_val) = s_noWhite[n_firstWhite:].split('=')
-                (s_var, s_val) = s_line[n_firstWhite:].split('=')
-
-            except Exception, E:
-                print "chaindot.py ERROR:  invalid syntax in string, ", s_line
-                print "                    ", E
-                continue
-		## sys.exit('Bad cfg file')
-
-                                        # This syntax allows conversion to a dict
-            self.append((s_var.lstrip(), (s_val, s_type)))
-
-
-
-    def interface_vars(self):
-        """Returns a list that contains only the interface variables"""
-        return list(filter(filter_interface, self))
-
-    def private_vars(self):
-        """Returns a list that contains only the private variables"""
-        return list(filter(filter_private, self))
-
-    def public_vars(self):
-        """Returns a list that contains only the public variables"""
-        return list(filter(filter_public, self))
-
-    def SetVars(self):
-        """This is the method prints the list's contents so as to 'set' the
-        variables in k-shell format."""
-
-        str=''
-        for (s_var, (s_val, s_type)) in self:
-            str=str + s_var + '=' + s_val + ';\n'
-        return str
-
-    def UnsetVars(self):
-        """This is the method prints the list's contents so as to 'unset' the
-        variables in k-shell format."""
-
-        str=''
-        for (s_var, (s_val, s_type)) in self:
-            ## NOTE:  unset returns an error if the variable does not exist
-            ##str=str + 'unset ' + s_var + ';\n'
-            str=str + 'if [ ${' + s_var + ':+1} ]; then unset ' + s_var + '; fi;\n'
-        return str
-
-
 
 class T_Chain:
     """This class does just one thing:  it follows down the chain of nodes,
@@ -208,9 +91,6 @@ class T_Chain:
 	self.o_tree_List=[self.s_exptName]+self.o_tree_List
 
         self.s_NodeName = self.o_tree_List[-1]
-
-        self.o_privates = T_CfgList()   # List of current private variables
-        self.o_publics = T_CfgList()    # List of current public variables
 
                                         # Digest the node sought
         if l_debug: print 's_NodePath=', s_NodePath
@@ -243,12 +123,16 @@ class T_Chain:
         # Establish the starting point of the chain
         #
         self.o_dotout.write('\n# ' + 'EXPERIMENT' +' '+
-                            self.o_node.getAttribute('name') + ':\n')
-#experiment config
+                            self.s_exptName + ':\n')
+        #experiment config
         self.__dotCfg(self.o_tree_List[0], "EXPERIMENT" )
                                         # Advance to first node name sought
         self.o_tree_List = self.o_tree_List[1:]
-#first module config
+
+        #first module config
+        self.o_dotout.write('\n# ' + 'MODULE' +' '+
+                            self.o_node.getAttribute('name') + ':\n')
+
         self.__dotCfg(self.o_tree_List[0], self.o_node.tagName)
                                         # Advance to first node name sought
         self.o_tree_List = self.o_tree_List[1:]
@@ -311,14 +195,17 @@ class T_Chain:
         # Construct the path to the configuration file
 	
 	#skip out loops if included in the node path
-	if s_nodeType == 'LOOP':
-            return ()
 
-        if s_nodeType == 'TASK':        # There is no directory for a task, grab the entire config file for tasks
-	    s_pathCfg = os.path.join(self.s_exptPath,
-                                 self.s_currentNodeDir,
-                                 s_cfg + '.cfg'
-                                )
+        if s_nodeType != 'LOOP':        # There is no directory for a task, grab the entire config file for tasks
+	   
+	    print "type =" + s_nodeType
+	    if  s_nodeType == 'TASK' or s_nodeType == 'NPASS_TASK':
+	        s_pathCfg = os.path.join(self.s_exptPath, self.s_currentNodeDir, s_cfg + '.cfg')
+            elif s_nodeType == 'EXPERIMENT':
+                s_pathCfg = s_pathCfg = os.path.join(self.s_exptPath, 'experiment.cfg')
+            else: ## container
+                self.s_currentNodeDir =  os.path.join(self.s_currentNodeDir, s_cfg)
+                s_pathCfg = os.path.join(self.s_exptPath, self.s_currentNodeDir, 'container.cfg')
 	    try:
                 o_cfgFile = open(s_pathCfg, 'r')
                 s_input=o_cfgFile.readlines()
@@ -335,82 +222,9 @@ class T_Chain:
             except IOError:
                # It appears that this node does not have a cfg file
                self.o_dotout.write("# - - - >> Could not open " + s_pathCfg + "\n")
-               o_cfgList = T_CfgList()
-               print "ERROR: Task node must have a configuration file."
-               sys.exit(1)
-	else:         # not a task 
-            self.s_currentNodeDir =  os.path.join(self.s_currentNodeDir, s_cfg)
-
-        if s_nodeType == 'EXPERIMENT':
-            s_pathCfg = os.path.join(self.s_exptPath, 'experiment.cfg')
-	else:      #containers
-	    s_pathCfg = os.path.join(self.s_exptPath,
-                                 self.s_currentNodeDir,
-                                 'container.cfg'
-                                )
-	    
-
-                                        # For backwards compatibility:
-        self.s_task_cfg = s_pathCfg     # Remember the last cfg path
- 
-        # Concatenate the configuration variables into a temporary list
-        o_cfgList = T_CfgList(s_pathCfg,s_nodeType)
-
-
-        if (s_nodeType == 'MODULE'):    # If this is a new module
-
-                                        # Split the interface variables out of
-                                        # the list
-            o_interfaces = T_CfgList()
-                                        # Pass backwards through the list,
-                                        # because some elements will be popped
-            for n_index in range(len(o_cfgList)-1, -1, -1):
-                if o_cfgList[n_index][1][1].lower() == 'interface':
-                    o_interfaces[0:0] = [o_cfgList.pop(n_index)]
-
-                                        # Treat interface and private variables
-            self.__StartNewModule(o_interfaces)
-
-                                        # Add the new values into the dot file
-        self.o_dotout.write(o_cfgList.SetVars())
-
-                                        # Track new variables, according to type
-        self.o_privates.extend(o_cfgList.private_vars())
-        self.o_publics.extend(o_cfgList.public_vars())
-
-
-    def __StartNewModule(self, o_interfaces):
-        """When a new module is encountered in the dot chain, it is necessary to
-             - treat any interface variables, taking their values before
-               advancing to the new scope
-             - advance to the new scope:
-                 - remove any old private variables
-                 - unhide any public variables that were hidden by the privates
-             - in future, remember to treat the interface variables as privates
-        """
-
-                                        # Set any interface variables,
-                                        # before erasing old private variables
-        self.o_dotout.write(o_interfaces.SetVars())
-
-                                        # Unset any old private variables
-        self.o_dotout.write(self.o_privates.UnsetVars())
-
-                                        # Create a temporary dictionary view
-        o_publicsDict=dict(self.o_publics)
-
-                                        # Unhide any public variables that were
-                                        # hidden by the privates
-        for (s_var, (s_val, s_type)) in self.o_privates:
-            if o_publicsDict.has_key(s_var):
-                self.o_dotout.write(s_var + '=' + o_publicsDict[s_var][0] +';\n')
-
-        del self.o_privates[0:]         # Forget the old private variables
-
-                                        # Transfer any interface variables to be
-                                        # new private variables
-        self.o_privates.extend(o_interfaces)
-        del o_interfaces[0:]
+               if  s_nodeType == 'TASK' or s_nodeType == 'NPASS_TASK':
+                   print "ERROR: Task node must have a configuration file."
+                   sys.exit(1)
 
 def main():    
 
