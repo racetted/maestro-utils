@@ -76,6 +76,8 @@ import re
 import optparse
 import tempfile
 import types
+from time import gmtime, strftime
+
 
 def which(name,verbose=True):
     """Duplicates the functionality of UNIX 'which' command"""    
@@ -249,7 +251,7 @@ class Config(dict):
     search_path_sections = ['executables','setup'] #These sections will search the PATH for non-fully-qualified targets
     ignore_sections = ['seq_scheduler']            #Ignore these sections in the configuration file
 
-    def __init__(self,file=None,taskdir=None,set=None):
+    def __init__(self,file,taskdir=None,set=None):
         """Class constructor"""
         self.configFile = file
         self.taskdir = taskdir
@@ -257,14 +259,9 @@ class Config(dict):
         self.set = None
         self.callFile = self._createTmpFile(sys.argv)
         self.envFile = self._createTmpFile(os.environ)
+        self["file"] = file
         if set:
             self._readSetFile(set) 
-        if file:
-            if self.configFile:
-                print "Warning: Changing config file on the fly"
-            self["file"] = file
-        elif not self.configFile:
-            print "Error: Configuration file undefined"
         if not self.configData:
             self._readConfigFile(self["file"])
 
@@ -499,6 +496,7 @@ class Config(dict):
                 error = stderr.read()
             if len(error) > 0:
                 print "Error: unable to create remote directory "+entry["target_host"]+':'+directory
+		print "Error: attempt to connect to "+entry["target_host"]+" returned STDERR "+error
                 status = self.error
         else:
             if not os.path.isdir(directory):
@@ -594,6 +592,7 @@ class Config(dict):
         if sub_status != self.ok: return(sub_status)
         upload_dir = self._upload_dir()
         for section in self["sections"].keys():
+            if (self.verbosity): print "  <"+section+">"
             if upload_dir: section_upload_dir = os.path.join(upload_dir,self._map(section))
             abs_subdir = os.path.join(self.taskdir,self._map(section))
             sub_status = self._subdir_setup(abs_subdir)
@@ -631,7 +630,9 @@ class Config(dict):
                     if dest_is_dir and not link_only:
                         dest_file = os.path.join(dest,os.path.basename(src_file))
                     else:
-                        dest_file = dest                        
+                        dest_file = dest
+                    dest_path_short = os.path.join(self._map(section),os.path.basename(dest_file))
+                    src_file_prefix = entry["target_host"] and entry["target_host"]+':' or ''
                     true_src_file = self._getTruePath(src_file)                    
                     if os.path.isdir(true_src_file):
                         if entry["target_type"] != 'directory':
@@ -639,9 +640,9 @@ class Config(dict):
                                " refers to a directory target "+entry["target"]
                         try:
                             os.symlink(path2host(entry["target_host"],true_src_file),dest_file)
-                            if (self.verbosity): print "Info: linked directory "+true_src_file+" => "+dest_file
+                            if (self.verbosity): print "Info: linked directory "+dest_path_short+" => "+src_file_prefix+true_src_file
                         except IOError:
-                            print "Error: error creating symlink for directory "+true_src_file+" => "+dest_file
+                            print "Error: error creating symlink for directory "+dest_path_short+" => "+src_file_prefix+true_src_file
                             status = self.error
                     else:
                         isfile = True
@@ -657,12 +658,14 @@ class Config(dict):
                                 output = stdout.read()
                                 error = stderr.read()
                             if len(error) > 0:
-                                print "Warning: unable to reach "+entry["target_host"]
+                                print "Warning: STDERR returned from "+entry["target_host"]+" is "+error
                                 isfile = False
                                 status = self.error
                             elif not int(output) == 1:
                                 isfile = False
-                                status = self.error
+				if not link_only: 
+				    print "Error: required file "+true_src_file+" does not exist on host "+entry["target_host"]
+				    status = self.error
                         else:
                             try:
                                 fd = open(true_src_file,'r')
@@ -682,21 +685,25 @@ class Config(dict):
                                         if status == self.ok: status = status_create
                                         true_src_file = self._getTruePath(true_src_file)
                                     if os.path.islink(dest_file):
-                                        print "Warning: overwriting existing link to "+dest_file+" with "+true_src_file
+                                        print "Warning: overwriting existing link to "+dest_file+" with "+src_file_prefix+true_src_file
                                         os.remove(dest_file)
                                     os.symlink(path2host(entry["target_host"],true_src_file),dest_file)
                                     link_type = "linked"
-                                if (self.verbosity): print "Info: "+link_type+" file "+true_src_file+" => "+dest_file
+                                if (self.verbosity): print "Info: "+link_type+" file "+dest_path_short+" => "+src_file_prefix+true_src_file
                             except OSError:
-                                print "Error: error creating symlink for file "+true_src_file+" => "+dest_file
+                                print "Error: error creating symlink for file "+dest_path_short+" => "+src_file_prefix+true_src_file
                                 status = self.error
                         else:
-                            print "Error: unable to link "+true_src_file+" => "+dest_file+" ... source file is unavailable"
+                            print "Error: unable to link "+dest_path_short+" => "+src_file_prefix+true_src_file+" ... source file is unavailable"
                             status = self.error
+            print "  </"+section+">"
         return(status)
 
 # Executable segment
 if __name__ == "__main__":
+
+    print "Main started" + strftime("%H:%M:%S", gmtime())
+
 
     # Command line argument parsing
     parser = optparse.OptionParser()
@@ -725,7 +732,7 @@ if __name__ == "__main__":
         print "Error: configuration file "+options.configFile+" does not exist"
         sys.exit(1)
 
-    # Read, parse and act on configuration file for task setup    
+    # Read, parse and act on configuration file for task setup
     cfg = Config(file=options.configFile,taskdir=options.basedir,set=options.environment)
     cfg.setOption('cleanup',options.clean)
     cfg.setOption('force',options.force)
@@ -733,10 +740,9 @@ if __name__ == "__main__":
     cfg.setOption('delimiter_var',options.delimiter)
     cfg.getSections()
     if cfg.link():
-        if cfg.verbosity: print "Info: task_setup.py complete"
         del cfg
 	sys.exit(0)
     else:
-        if cfg.verbosity: print "Info: error completion from task_setup.py"
+        if cfg.verbosity: print " *** Error: problematic completion from task_setup.py *** "
         del cfg
 	sys.exit(1)
