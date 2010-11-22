@@ -63,6 +63,7 @@ unified sequencer."""
 # v1_01   Racette D.      July 14 2010 Modified argument passing
 # v1_02   Racette D.      July 21 2010 Modified experiment structure
 # v1_03   Racette D.      Aug. 24 2010 Removing Scoping
+# v1_04   Racette D.      Nov. 20 2010 Changed loop behaviour
 
 
 from xml.dom              import expatbuilder
@@ -196,35 +197,33 @@ class T_Chain:
 	
 	#skip out loops if included in the node path
 
-        if s_nodeType != 'LOOP':        # There is no directory for a task, grab the entire config file for tasks
-	   
-	    print "type =" + s_nodeType
-	    if  s_nodeType == 'TASK' or s_nodeType == 'NPASS_TASK':
-	        s_pathCfg = os.path.join(self.s_exptPath, self.s_currentNodeDir, s_cfg + '.cfg')
-            elif s_nodeType == 'EXPERIMENT':
-                s_pathCfg = s_pathCfg = os.path.join(self.s_exptPath, 'experiment.cfg')
-            else: ## container
-                self.s_currentNodeDir =  os.path.join(self.s_currentNodeDir, s_cfg)
-                s_pathCfg = os.path.join(self.s_exptPath, self.s_currentNodeDir, 'container.cfg')
-	    try:
-                o_cfgFile = open(s_pathCfg, 'r')
-                s_input=o_cfgFile.readlines()
-                o_cfgFile.close()
+	print "type =" + s_nodeType
+	if  s_nodeType == 'TASK' or s_nodeType == 'NPASS_TASK':
+	    s_pathCfg = os.path.join(self.s_exptPath, self.s_currentNodeDir, s_cfg + '.cfg')
+        elif s_nodeType == 'EXPERIMENT':
+            s_pathCfg = s_pathCfg = os.path.join(self.s_exptPath, 'experiment.cfg')
+        else: ## container
+            self.s_currentNodeDir =  os.path.join(self.s_currentNodeDir, s_cfg)
+            s_pathCfg = os.path.join(self.s_exptPath, self.s_currentNodeDir, 'container.cfg')
+	try:
+            o_cfgFile = open(s_pathCfg, 'r')
+            s_input=o_cfgFile.readlines()
+            o_cfgFile.close()
 
-	        for s_line in s_input:
-                    s_line.lstrip()             # Ignore initial white space
-                                                # Keep only non-comment lines
-                    if len(s_line) < 2 :  ##or s_line[0] == '#':
-                       continue
-                    self.o_dotout.write(s_line)
-		return ()
+            for s_line in s_input:
+                s_line.lstrip()             # Ignore initial white space
+                                            # Keep only non-comment lines
+                if len(s_line) < 2 :  ##or s_line[0] == '#':
+                    continue
+                self.o_dotout.write(s_line)
+	    return ()
 
-            except IOError:
-               # It appears that this node does not have a cfg file
-               self.o_dotout.write("# - - - >> Could not open " + s_pathCfg + "\n")
-               if  s_nodeType == 'TASK' or s_nodeType == 'NPASS_TASK':
-                   print "ERROR: Task node must have a configuration file."
-                   sys.exit(1)
+        except IOError:
+          # It appears that this node does not have a cfg file
+            self.o_dotout.write("# - - - >> Could not open " + s_pathCfg + "\n")
+            if  s_nodeType == 'TASK' or s_nodeType == 'NPASS_TASK':
+               print "ERROR: Task node must have a configuration file."
+               sys.exit(1)
 
 def main():    
 
