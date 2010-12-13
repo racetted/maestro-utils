@@ -2,6 +2,7 @@
 
 arguments=$*
 
+set -x
 eval `cclargs_lite $0 \
   -n        ""                    ""                           "[Node         ]" \
   -h        ""                    ""                           "[Display help       ]" \

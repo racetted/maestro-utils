@@ -14,7 +14,7 @@ ssm:
 	mkdir -p $(SSMPACKAGE)/.ssm.d;
 	cp -r pre-publish $(SSMPACKAGE)/.ssm.d;
 	cp -r post-install $(SSMPACKAGE)/.ssm.d;
-	ssmprep --basePath $(PWD)/$(SSMPACKAGE) -p $(SSMPACKAGE) --editorPath /bin/echo;
+	ssmprep --basePath $(shell pwd)/$(SSMPACKAGE) -p $(SSMPACKAGE) --editorPath /bin/echo;
 	echo "Package: maestro-utils" > $(SSMPACKAGE)/.ssm.d/control; \
 	echo "Version: ${VERSION}" >> $(SSMPACKAGE)/.ssm.d/control; \
 	echo "Platform: all" >> $(SSMPACKAGE)/.ssm.d/control; \
