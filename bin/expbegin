@@ -1,0 +1,62 @@
+#!/bin/ksh
+
+arguments=$*
+eval `cclargs_lite $0 \
+  -h        ""                    ""                   "[Display help       ]" \
+  -d        ""                    ""                   "[datestamp value]" \
+  -debug    "0"                   "1"                  "[debug mode]" \
+  ++ $arguments`
+
+test "${debug}" = "1" && set -x
+
+if [ ! -d "${SEQ_EXP_HOME}" ]; then
+   echo "expbegin error: Invalid path SEQ_EXP_HOME=$SEQ_EXP_HOME"
+   exit 1
+fi
+
+if [[ -n "${SEQ_BIN}" ]] ; then
+   nodeinfo=${SEQ_BIN}/nodeinfo
+   tictac=${SEQ_BIN}/tictac
+   maestro=${SEQ_BIN}/maestro
+else
+   nodeinfo=$(which nodeinfo)
+   tictac=$(which tictac)
+   maestro=$(which maestro)
+fi
+
+logfile=${SEQ_EXP_HOME}/logs/log_expbegin
+printf "\ndate:$(date)" >> ${logfile}
+printf "\nnodeinfo:${nodeinfo}" >> ${logfile}
+printf "\ntictac:${tictac}" >> ${logfile}
+printf "\nmaestro:${maestro}" >> ${logfile}
+
+if [[ "${d}" = "" ]]; then
+   currentDate=$(${tictac} -f %Y%M%D%H%Min%S)
+
+   #  get new date: +24 Hours
+   newDate=$(r.date ${currentDate} +24 | cut -c 1-14)
+else
+   newDate=${d} 
+fi
+
+# set new date
+printf "\nset new date:${tictac} -s ${newDate}" >> ${logfile}
+${tictac} -s ${newDate}
+
+# create log file
+explogfile=${SEQ_EXP_HOME}/logs/${newDate}_nodelog
+test ! -f ${explogfile} && touch ${explogfile}
+
+# verify if new date set
+retrievedDate=$(${tictac} -f '%Y%M%D%H%Min%S')
+printf "\nretrieve date: ${tictac} -f %%Y%%M%%D%%H%%Min%%S: ${retrievedDate}\n" >> ${logfile}
+if [[ "${retrievedDate}" != "${newDate}" ]] ; then 
+   printf "\nERROR expbegin: unable to set new datestamp (${tictac} -s ${newDate})" >&2
+   exit 1
+fi
+
+# start new run
+rootNode=$( ${nodeinfo} -f root )
+rootNode=$( echo ${rootNode} | cut -d "=" -f2 )
+
+${maestro} -s submit -n ${rootNode} >> ${logfile} 2>&1

@@ -76,8 +76,6 @@ import re
 import optparse
 import tempfile
 import types
-from time import gmtime, strftime
-
 
 def which(name,verbose=True):
     """Duplicates the functionality of UNIX 'which' command"""    
@@ -128,9 +126,9 @@ class Section(list):
             env = []
             for element in elements:
                 this_element = os.environ.get(element)
-                if this_element:
+                if this_element != None:
                     env.append(this_element)                
-                else:                    
+                else:
                     if self.set:
                         try:
                             this_element = self.set[element]
@@ -141,7 +139,7 @@ class Section(list):
                     else:
                         print "Warning: Environment variable "+element+ " undefined ... ignoring"
                         env.append(element)                        
-            if len(env) > 0 and env[0]:
+            if len(env) > 0 and env[0] != None:
                 replacement = ''
                 if remote:
                     localhost = os.environ.get('TRUE_HOST')
@@ -701,9 +699,6 @@ class Config(dict):
 
 # Executable segment
 if __name__ == "__main__":
-
-    print "Main started" + strftime("%H:%M:%S", gmtime())
-
 
     # Command line argument parsing
     parser = optparse.OptionParser()
