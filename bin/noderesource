@@ -1,8 +1,8 @@
 #!/bin/ksh
 #
-usage='usage: nodeconfig -n node'
+usage='usage: node_resource -n node'
 
-msgjob=' node config not available: '
+msgjob=' node resource file not available: '
 
 if [ "${SEQ_EXP_HOME}" == "" ]; then
    echo "ERROR: SEQ_EXP_HOME not defined!\n"
@@ -33,18 +33,16 @@ in
      ;;
 esac
 
-filter=cfg
 if [[ "${SEQ_BIN}" = "" ]]; then
    test $(which nodeinfo) || (echo nodeinfo not found; exit 1)
-   taskCfg=$(nodeinfo -n $node -f $filter)
+   resourcePath=$(nodeinfo -n $node -f res_path)
+   nodeinfo -n $node -f res_path
 else
-   taskCfg=$($SEQ_BIN/nodeinfo -n $node -f $filter)
-   $SEQ_BIN/nodeinfo -n $node -f $filter
+   resourcePath=$($SEQ_BIN/nodeinfo -n $node -f res_path)
+   $SEQ_BIN/nodeinfo -n $node -f res_path
 fi
 
-eval taskCfg=${taskCfg##*=}
-if [[ -r ${taskCfg} ]] ; then
-   cat ${taskCfg}
-else
-   echo "ERROR: config file $taskCfg not found!"
+eval resourcePath=${resourcePath##*=}
+if [[ -r ${resourcePath} ]] ; then
+   cat ${resourcePath}
 fi
