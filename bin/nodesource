@@ -34,7 +34,8 @@ in
 esac
 
 if [[ "${SEQ_BIN}" = "" ]]; then
-   test $(which nodeinfo) || echo nodeinfo not found; exit 1
+   test $(which nodeinfo) || (echo nodeinfo not found; exit 1)
+
    taskPath=$(nodeinfo -n $node -f task)
 else
    taskPath=$($SEQ_BIN/nodeinfo -n $node -f task)
