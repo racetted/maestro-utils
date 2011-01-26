@@ -25,11 +25,6 @@ checkarg()
 # Check command line arguments for the configuration file and task directory
 arglist=$*
 . o.set_array.dot argv $arglist
-#i=0
-#for arg in ${arglist} ; do
-#  argv[$i]=${arg}
-#  i=$((i+1))
-#done
 task_setup_cfgfile=
 TASK_BASEDIR=
 i=0
@@ -41,26 +36,26 @@ while [ -n "${argv[$i]}" ] ; do
   i=$((i+1))
 done
 if [ -z "${task_setup_cfgfile}" ] ; then
-  echo "ERROR: "$0" was unable to find a mandatory -f or --file argument"
+  echo "WARNING: task_setup.ksh was unable to find a -f or --file argument"
 fi
 if [ ! -f "${task_setup_cfgfile}" ] ; then
-  echo "ERROR: "$0" was unable to find specified configuration file "${task_setup_cfgfile}
+  echo "WARNING: task_setup.ksh was unable to find specified configuration file "${task_setup_cfgfile}
 fi
 
 # Clean up shell and dot configuration file
 export TASK_BASEDIR
 unset argv
 unset i
-. ${task_setup_cfgfile}
+if [[ -f ${task_setup_cfgfile} ]] ; then . ${task_setup_cfgfile} ; fi
 unset task_setup_cfgfile
 
 # Generate a temporary file containing all set variables
-tmpfile=/tmp/task_setup_env$$
+tmpfile=${TMPDIR:-/tmp}/task_setup_env$$
 set >${tmpfile}
 
 # Call task setup to generate task directory structure
 printf "** TASK_SETUP begins **\n"
-task_setup-0.7.5.py --environment ${tmpfile} ${arglist}
+task_setup-0.7.7.py --environment ${tmpfile} ${arglist}
 printf "** TASK_SETUP ends **\n"
 
 # Export 
