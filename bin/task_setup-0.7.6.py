@@ -219,6 +219,7 @@ class Section(list):
         if search_path:
             entry["target"] = which(entry["target"])
         entry["copy"] = False
+        entry["cleanup"] = False
         entry["create_target"] = False
         entry["link_only"] = False
         if self.section == 'output':
@@ -249,7 +250,7 @@ class Config(dict):
     search_path_sections = ['executables','setup'] #These sections will search the PATH for non-fully-qualified targets
     ignore_sections = ['seq_scheduler']            #Ignore these sections in the configuration file
 
-    def __init__(self,file,taskdir=None,set=None):
+    def __init__(self,file=None,taskdir=None,set=None):
         """Class constructor"""
         self.configFile = file
         self.taskdir = taskdir
@@ -317,6 +318,9 @@ class Config(dict):
 
     def _readConfigFile(self,file):
         """Read configuration file"""
+        if not file:
+            self.configData = ''
+            return
         try:
             fd = open(file,"rb")
             self.configData = fd.readlines()
@@ -426,22 +430,26 @@ class Config(dict):
                                    "target_type":'file',
                                    "target_host":None,
                                    "copy":False,
+                                   "cleanup":False,
                                    "create_target":False,
                                    "link_host":None,
                                    "link_only":False})
-        self._append_meta("setup",{"link":"task_setup.cfg",
-                                   "target":self.configFile,
-                                   "target_type":'file',
-                                   "target_host":None,
-                                   "copy":True,
-                                   "create_target":False,
-                                   "link_host":None,
-                                   "link_only":False})
+        if self["file"]:
+            self._append_meta("setup",{"link":"task_setup.cfg",
+                                       "target":self.configFile,
+                                       "target_type":'file',
+                                       "target_host":None,
+                                       "copy":True,
+                                       "cleanup":False,
+                                       "create_target":False,
+                                       "link_host":None,
+                                       "link_only":False})
         self._append_meta("setup",{"link":"task_setup_call.txt",
                                    "target":self.callFile,
                                    "target_type":'file',
                                    "target_host":None,
                                    "copy":True,
+                                   "cleanup":False,
                                    "create_target":False,
                                    "link_host":None,
                                    "link_only":False})
@@ -450,6 +458,7 @@ class Config(dict):
                                    "target_host":None,
                                    "target_type":'file',
                                    "copy":True,
+                                   "cleanup":False,
                                    "create_target":False,
                                    "link_host":None,
                                    "link_only":False})
@@ -459,6 +468,7 @@ class Config(dict):
                                        "target_type":'file',
                                        "target_host":None,
                                        "copy":True,
+                                       "cleanup":True,
                                        "create_target":False,
                                        "link_host":None,
                                        "link_only":False})
@@ -469,6 +479,7 @@ class Config(dict):
                                        "target_type":'file',
                                        "target_host":None,
                                        "copy":False,
+                                       "cleanup":False,
                                        "create_target":False,
                                        "link_host":None,
                                        "link_only":False})
@@ -674,9 +685,13 @@ class Config(dict):
                                "/ refers to a file target "+entry["target"]
                         if isfile or link_only:
                             try:
-                                if entry["copy"] and not link_only:
-                                    shutil.copyfile(true_src_file,dest_file)
-                                    link_type = "copied"
+                                if entry["copy"] and not link_only:                                    
+                                    if entry["cleanup"]:
+                                        shutil.move(true_src_file,dest_file)
+                                        link_type = "moved"
+                                    else:
+                                        shutil.copyfile(true_src_file,dest_file)
+                                        link_type = "copied"
                                 else:
                                     if entry["create_target"]:
                                         status_create = self._createTarget(entry,true_src_file)
@@ -702,7 +717,7 @@ if __name__ == "__main__":
 
     # Command line argument parsing
     parser = optparse.OptionParser()
-    parser.add_option("-f","--file",dest="configFile",
+    parser.add_option("-f","--file",dest="configFile",default=None,
                       help="configuration FILE name (full path)",metavar="FILE")
     parser.add_option("-d","--delimiter",dest="delimiter",default='::',
                       help="keyword DELIMITER [default ::]",metavar="DELIMITER")
@@ -717,15 +732,6 @@ if __name__ == "__main__":
     parser.add_option("-e","--environment",dest="environment",default=None,
                       help="text FILE containing the environment in which to run",metavar="FILE")
     (options,args) = parser.parse_args()
-
-    # Check arguments for errors
-    if not options.configFile:
-        print "\nError: a configuration file (--file=/path/to/config/file) must be provided\n"
-        parser.print_help()
-        sys.exit(1)
-    if not os.path.isfile(options.configFile):
-        print "Error: configuration file "+options.configFile+" does not exist"
-        sys.exit(1)
 
     # Read, parse and act on configuration file for task setup
     cfg = Config(file=options.configFile,taskdir=options.basedir,set=options.environment)
