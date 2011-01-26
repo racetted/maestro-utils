@@ -55,7 +55,7 @@ set >${tmpfile}
 
 # Call task setup to generate task directory structure
 printf "** TASK_SETUP begins **\n"
-task_setup-0.7.6.py --environment ${tmpfile} ${arglist}
+task_setup-0.7.7.py --environment ${tmpfile} ${arglist}
 printf "** TASK_SETUP ends **\n"
 
 # Export 
