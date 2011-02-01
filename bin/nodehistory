@@ -98,7 +98,10 @@ do
           sed -e "s,:SEQNODE=${nodeContainer}/${nodeLeaf}:, ," \
           -e "s,:SEQLOOP=${nodeExt}:,," \
           -e "s,MSGTYPE=,MESSAGE=," \
-          -e "s,SEQMSG=, ,"
+          -e "s,SEQMSG=, ," \
+          -e "s,beginx,begin," \
+          -e "s,endx,end," \
+          -e "s,abortx,abort,"
           echo ""
       fi
    else
