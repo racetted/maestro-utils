@@ -85,7 +85,10 @@ def mkdir_p(path):
         value = sys.exc_info()[1][0]
         if value == errno.EEXIST:
             pass
-        else: raise
+        else:
+            sys.stderr.write('task_setup.py::os.makdeirs() returned the following error information on an attempt to create ' \
+                             +path+': '+str(sys.exc_info())+"\n")
+            raise
 
 def which(name,verbose=True):
     """Duplicates the functionality of UNIX 'which' command"""    
@@ -353,7 +356,7 @@ class Config(dict):
         if not os.path.isdir(subdir):
             if (self.verbosity): print "Info: creating subdirectory "+subdir
             try:
-                os.mkdir(subdir)
+                mkdir_p(subdir)
             except OSError:
                 print "Error: could not create "+subdir
                 status = self.error
@@ -515,7 +518,7 @@ class Config(dict):
                 error = stderr.read()
             if len(error) > 0:
                 print "Error: unable to create remote directory "+entry["target_host"]+':'+directory
-		print "Error: attempt to connect to "+entry["target_host"]+" returned STDERR "+error
+		sys.stderr.write("task_setup.py::_createTarget() attempt to connect to "+entry["target_host"]+" returned STDERR "+error+"\n")
                 status = self.error
         else:
             if not os.path.isdir(directory):
@@ -586,10 +589,16 @@ class Config(dict):
                 else:
                     head = sectionHead.search(line)
                     if head:
+                        if currentSection:
+                            print "Error: found header for "+head.group(1)+" while still in open section for "+currentSection
+                            print "  Perhaps the configuration file "+self["file"]+" is missing an </"+currentSection+"> end section tag?"
+                            sys.stderr.write("task_setup.py::getSections() failed parsing "+self["file"]+" at <"+head.group(1)+">\n")
+                            self["sections"] = {}
+                            return(self.error)
                         currentSection = head.group(1)
                         if currentSection in self.ignore_sections:
                             currentSection = None
-                        else:                            
+                        else:
                             self["sections"][currentSection] = Section(currentSection,set=self.set)
                 if (currentSection and not head):
                     self["sections"][currentSection].add(line,currentSection in self.search_path_sections)
