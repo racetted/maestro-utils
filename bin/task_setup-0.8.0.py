@@ -571,10 +571,11 @@ class Config(dict):
     def getSections(self):
         """Break input data into individual sections"""
         currentSection = None
-        prefix='^\s*#[^#]+\s*'
-        validLine = re.compile(prefix+'(.+)',re.M)
+        prefix='^\s*#\s*'
+        validLine = re.compile(prefix+'[^#](.+)',re.M)
         sectionHead = re.compile(prefix+'<([^/].*)>',re.M)
         sectionFoot = re.compile(prefix+'</(.*)>',re.M)
+        emptyEntry = re.compile(prefix+'\S+\s*<no\svalue>',re.M)
         self["sections"] = {}
         for raw_line in self.configData:
             line = re.sub('^\s+','',raw_line,re.M)
@@ -600,7 +601,7 @@ class Config(dict):
                             currentSection = None
                         else:
                             self["sections"][currentSection] = Section(currentSection,set=self.set)
-                if (currentSection and not head):
+                if (currentSection and not head and not emptyEntry.search(line)):
                     self["sections"][currentSection].add(line,currentSection in self.search_path_sections)
         for force in self.force_sections:
             self["sections"][force] = Section(force)
@@ -758,7 +759,11 @@ if __name__ == "__main__":
     cfg.setOption('force',options.force)
     cfg.setOption('verbosity',options.verbose)
     cfg.setOption('delimiter_var',options.delimiter)
-    cfg.getSections()
+    if cfg.getSections():
+        pass
+    else:
+        if cfg.verbosity: print " *** Error: task_setup.py unable to continue *** "
+        sys.exit(1)
     if cfg.link():
         del cfg
 	sys.exit(0)
