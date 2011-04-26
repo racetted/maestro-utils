@@ -225,10 +225,16 @@ class Section(list):
             print "Warning: ignoring malformed configuration line: "+line
             return(False)
         lastSlash = re.compile('/$',re.M)
-        (entry["link"],entry["link_host"]) = self._resolveKeywords(lastSlash.sub('',rawLink))
+        (link,link_host) = self._resolveKeywords(lastSlash.sub('',rawLink))
+        (target,target_host) = self._resolveKeywords(rawTarget)        
+        if re.match('^\s*\'*<no\svalue>',target):
+            print "Info: will not create link for "+link+" because of special target value "+target
+            return(False)
+        entry["link_host"] = link_host
+        entry["link"] = link
+        entry["target_host"] = target_host
         entry["target_type"] = lastSlash.search(rawLink) and 'directory' or 'file'
-        (entry["target"],entry["target_host"]) = self._resolveKeywords(rawTarget)        
-        entry["target"] = self._executeEmbedded(entry["target"])
+        entry["target"] = self._executeEmbedded(target)
         if search_path:
             entry["target"] = which(entry["target"])
         entry["copy"] = False
@@ -575,7 +581,6 @@ class Config(dict):
         validLine = re.compile(prefix+'[^#](.+)',re.M)
         sectionHead = re.compile(prefix+'<([^/].*)>',re.M)
         sectionFoot = re.compile(prefix+'</(.*)>',re.M)
-        emptyEntry = re.compile(prefix+'\S+\s*<no\svalue>',re.M)
         self["sections"] = {}
         for raw_line in self.configData:
             line = re.sub('^\s+','',raw_line,re.M)
@@ -601,7 +606,7 @@ class Config(dict):
                             currentSection = None
                         else:
                             self["sections"][currentSection] = Section(currentSection,set=self.set)
-                if (currentSection and not head and not emptyEntry.search(line)):
+                if (currentSection and not head):                    
                     self["sections"][currentSection].add(line,currentSection in self.search_path_sections)
         for force in self.force_sections:
             self["sections"][force] = Section(force)
