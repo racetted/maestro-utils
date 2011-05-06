@@ -207,6 +207,7 @@ class T_Chain:
             s_pathCfg = os.path.join(self.s_exptPath, self.s_currentNodeDir, 'container.cfg')
 	try:
             o_cfgFile = open(s_pathCfg, 'r')
+	    self.o_dotout.write("# config file: " + s_pathCfg + "\n")
             s_input=o_cfgFile.readlines()
             o_cfgFile.close()
 
