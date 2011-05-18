@@ -222,9 +222,6 @@ class T_Chain:
         except IOError:
           # It appears that this node does not have a cfg file
             self.o_dotout.write("# - - - >> Could not open " + s_pathCfg + "\n")
-            if  s_nodeType == 'TASK' or s_nodeType == 'NPASS_TASK':
-               print "ERROR: Task node must have a configuration file."
-               sys.exit(1)
 
 def main():    
 
