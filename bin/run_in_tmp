@@ -1,0 +1,24 @@
+#/bin/ksh
+
+    # use /fasttmp if available
+    tmpfs=`mktmpfs -L -s 1024 -c pid self 2>/dev/null` || true
+    if [ -d "$tmpfs" ]; then
+        echo '\n\n'Reset TMPDIR=$tmpfs'\n\n'
+        export STD_TMPDIR=$TMPDIR
+        export TMPDIR=$tmpfs
+    else
+        echo TMPDIR=$TMPDIR
+    fi
+
+    mkdir -p $TMPDIR/$SEQ_NAME/work
+    cd $TMPDIR/$SEQ_NAME/work
+    if [[ -d $TASK_BIN ]]; then 
+        ln -s $TASK_BIN ../bin 
+    fi
+    if [[ -d $TASK_OUTPUT ]]; then 
+        ln -s $TASK_OUTPUT ../output
+    fi
+    if [[ -d $TASK_INPUT ]]; then 
+        ln -s $TASK_INPUT ../input
+    fi
+    export TASK_WORK=$(pwd)
