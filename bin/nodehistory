@@ -62,7 +62,7 @@ nodeLeaf=${nodeLeaf%.*}
 test $nodeExt = $nodeLeaf && nodeExt=""
 
 if [[ $history != "" ]]; then
-    sdate=$(r.date -V $(r.date $edate) -$history | cut -c 0-14)  
+    sdate=$(r.date -V $(r.date $edate) -$history | cut -c 1-14)  
 fi
 
 ### pad dates to 14 date characters by multiplying by base 10.
@@ -83,7 +83,7 @@ logFiles=$(ls ${SEQ_EXP_HOME}/logs/*_nodelog)
 
 for logFile in $logFiles
 do
-   dateLog=$(basename $logFile |cut -c 0-14) 
+   dateLog=$(basename $logFile |cut -c 1-14) 
    if [[ ( -r $logFile ) ]] ; then
       if [[ ( ("$dateLog" > "$sdate" ) || ( "$dateLog" == "$sdate" ) ) && ( ("$dateLog" < "$edate" ) || ( "$dateLog" == "$edate"  )) ]]; then
           logLeaf=${logFile##*/}
