@@ -1,1 +1,1 @@
-task_setup-0.8.0.ksh
+task_setup-0.9.2.ksh
