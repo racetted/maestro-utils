@@ -5,15 +5,14 @@
 # common section definition
 include config.mk
 
-ssm: 
+ssm: profile.sh
 	echo "Creating SSM package $(SSMPACKAGE)..."
 	if [ ! -d $(SSMPACKAGE) ]; then \
 	   mkdir $(SSMPACKAGE); \
 	fi;
 	cp -r $(SWDEST)/bin $(SSMPACKAGE); 
 	mkdir -p $(SSMPACKAGE)/.ssm.d;
-	cp -r pre-publish $(SSMPACKAGE)/.ssm.d;
-	cp -r post-install $(SSMPACKAGE)/.ssm.d;
+	cp -r pre-publish post-install profile.sh $(SSMPACKAGE)/.ssm.d;
 	ssmprep --basePath $(shell pwd)/$(SSMPACKAGE) -p $(SSMPACKAGE) --editorPath /bin/echo;
 	echo "Package: maestro-utils" > $(SSMPACKAGE)/.ssm.d/control; \
 	echo "Version: ${VERSION}" >> $(SSMPACKAGE)/.ssm.d/control; \
@@ -23,5 +22,10 @@ ssm:
 	echo "Description: Maestro Utilities" >> $(SSMPACKAGE)/.ssm.d/control; \
 	tar cvf - $(SSMPACKAGE) | gzip -> $(SSMPACKAGE).ssm
 
+profile.sh: Makefile
+	touch profile ;\
+	echo "export SEQ_UTILS_VERSION=${VERSION}" >$@ ;\
+	cat profile >>$@
+
 clean:
-	rm -r $(SSMPACKAGE).ssm $(SSMPACKAGE)
+	rm -r $(SSMPACKAGE).ssm $(SSMPACKAGE) profile.sh
