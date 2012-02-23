@@ -30,6 +30,9 @@ printf "\nnodeinfo:${nodeinfo}" >> ${logfile}
 printf "\ntictac:${tictac}" >> ${logfile}
 printf "\nmaestro:${maestro}" >> ${logfile}
 
+if [[ -n "${SEQ_DATE}" ]] ; then
+    printf "\nSEQ_DATE=${SEQ_DATE}" >> ${logfile}
+fi
 if [[ "${d}" = "" ]]; then
    currentDate=$(${tictac} -f %Y%M%D%H%Min%S)
 
@@ -47,16 +50,21 @@ ${tictac} -s ${newDate}
 explogfile=${SEQ_EXP_HOME}/logs/${newDate}_nodelog
 test ! -f ${explogfile} && touch ${explogfile}
 
-# verify if new date set
-retrievedDate=$(${tictac} -f '%Y%M%D%H%Min%S')
-printf "\nretrieve date: ${tictac} -f %%Y%%M%%D%%H%%Min%%S: ${retrievedDate}\n" >> ${logfile}
-if [[ "${retrievedDate}" != "${newDate}" ]] ; then 
-   printf "\nERROR expbegin: unable to set new datestamp (${tictac} -s ${newDate})" >&2
-   exit 1
-fi
-
-# start new run
+# determine node to submit
 rootNode=$( ${nodeinfo} -f root )
 rootNode=$( echo ${rootNode} | cut -d "=" -f2 )
 
-${maestro} -s submit -n ${rootNode} >> ${logfile} 2>&1
+(
+# verify if new date set
+    set SEQ_DATE NULL; unset SEQ_DATE
+    retrievedDate=$(${tictac} -f '%Y%M%D%H%Min%S')
+    printf "\nretrieve date: ${tictac} -f %%Y%%M%%D%%H%%Min%%S: ${retrievedDate}\n" >> ${logfile}
+    if [[ "${retrievedDate}" != "${newDate}" ]] ; then 
+	printf "\nERROR expbegin: unable to set new datestamp (${tictac} -s ${newDate})" >&2
+	exit 1
+    fi
+
+# start new run
+    ${maestro} -s submit -n ${rootNode} >> ${logfile} 2>&1
+)
+
