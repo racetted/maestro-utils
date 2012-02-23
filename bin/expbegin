@@ -14,6 +14,8 @@ if [ ! -d "${SEQ_EXP_HOME}" ]; then
    exit 1
 fi
 
+typeset -z 14 newDate
+
 if [[ -n "${SEQ_BIN}" ]] ; then
    nodeinfo=${SEQ_BIN}/nodeinfo
    tictac=${SEQ_BIN}/tictac
@@ -39,7 +41,7 @@ if [[ "${d}" = "" ]]; then
    #  get new date: +24 Hours
    newDate=$(r.date ${currentDate} +24 | cut -c 1-14)
 else
-   newDate=${d} 
+   newDate=$(r.date -V ${d}| cut -c 1-14)
 fi
 
 # set new date
