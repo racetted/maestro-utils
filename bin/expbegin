@@ -14,8 +14,6 @@ if [ ! -d "${SEQ_EXP_HOME}" ]; then
    exit 1
 fi
 
-typeset -z 14 newDate
-
 if [[ -n "${SEQ_BIN}" ]] ; then
    nodeinfo=${SEQ_BIN}/nodeinfo
    tictac=${SEQ_BIN}/tictac
