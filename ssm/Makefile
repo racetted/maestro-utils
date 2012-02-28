@@ -22,7 +22,7 @@ ssm: profile.sh
 	echo "Description: Maestro Utilities" >> $(SSMPACKAGE)/.ssm.d/control; \
 	tar cvf - $(SSMPACKAGE) | gzip -> $(SSMPACKAGE).ssm
 
-profile.sh: Makefile
+profile.sh: Makefile config.mk
 	touch profile ;\
 	echo "export SEQ_UTILS_VERSION=${VERSION}" >$@ ;\
 	cat profile >>$@
