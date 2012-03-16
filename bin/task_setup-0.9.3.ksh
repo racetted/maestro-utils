@@ -69,7 +69,7 @@ if [[ ${TASK_SETUP_NOEXEC:-0} > 0 ]] ; then
     fi
 else
     printf "** TASK_SETUP begins **\n"
-    task_setup-0.9.2.py --environment ${tmpfile} ${arglist} || exit 1
+    task_setup-0.9.3.py --environment ${tmpfile} ${arglist} || exit 1
     printf "** TASK_SETUP ends **\n"
 fi
 

@@ -507,17 +507,25 @@ class Config(dict):
         if not entry["create_target"]: return(status)
         directory = (entry["target_type"] == 'directory') and path or os.path.split(path)[0]        
         if entry["target_host"]:
-            make_dir = "echo \"s.mkdir_onebyone "+directory+"\" | ssh "+entry["target_host"]+" bash --login"
+            make_dir = "echo \"s.mkdir_onebyone "+directory+"; if [[ -d "+directory+ \
+                       " ]] ; then echo TASK_SETUP_SUCCESS ; else echo TASK_SETUP_FAILURE ; fi\" | ssh "+ \
+                       entry["target_host"]+" bash --login"
             if have_subprocess:
-                p = subprocess.Popen(make_dir,shell=True,stderr=subprocess.PIPE)
-                error = p.stderr.read()                
+                p = subprocess.Popen(make_dir,shell=True,stderr=subprocess.PIPE,stdout=subprocess.PIPE)
+                error = p.stderr.read()
+                output = p.stdout.read()
             else:
                 (stdin,stdout,stderr) = os.popen3(make_dir,'r')
                 error = stderr.read()
-            if len(error) > 0:
-                print "Error: unable to create remote directory "+entry["target_host"]+':'+directory
-		sys.stderr.write("task_setup.py::_createTarget() attempt to connect to "+entry["target_host"]+" returned STDERR "+error+"\n")
+                output = stdout.read()
+            if not re.search("TASK_SETUP_SUCCESS",output):
                 status = self.error
+                if re.search("TASK_SETUP_FAILURE",output):
+                    print "Error: login to "+entry["target_host"]+" successful but "+directory+" not created"
+                else:
+                    print "Error: unable to obtain directory status on "+entry["target_host"]
+            if len(error) > 0:
+                sys.stderr.write("task_setup.py::_createTarget() attempt to connect to "+entry["target_host"]+" returned STDERR "+error+"\n")
         else:
             if not os.path.isdir(directory):
                 try:
