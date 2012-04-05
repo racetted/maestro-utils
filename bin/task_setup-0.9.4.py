@@ -63,7 +63,7 @@ SECTION CLASS
     force           - Force action despite warnings.
 """
 
-__version__ = "0.7.7"
+__version__ = "0.9.4"
 __author__  = "Ron McTaggart-Cowan (ron.mctaggart-cowan@ec.gc.ca)"
 
 #---------
@@ -101,7 +101,7 @@ def which(name,verbose=True):
                 if os.access(fullname,os.X_OK): return(fullname) 
         except:
             continue
-    if (verbose): print "Warning: unable to find "+name+" in path"
+    if (verbose): print "Warning: unable to find "+name+" in path \nPATH="+os.environ['PATH']
     return('')  
 
 def path2host(machine,path):
