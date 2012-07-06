@@ -1,0 +1,11 @@
+#!/bin/ksh
+
+if [[ -z "${MAESTRO_CURRENT_REF}" ]] ; then
+  echo "MAESTRO_CURRENT_REF is not defined: load a Maestro module before continuing"
+  exit 1
+fi
+import_maestro_exp -s ${MAESTRO_CURRENT_REF}/ref -d . -n -c -y
+post_hook=${MAESTRO_CURRENT_REF}/bin/makeexp_hook
+if [[ -x ${post_hook} ]] ; then
+  ${post_hook}
+fi
