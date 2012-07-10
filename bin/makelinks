@@ -1,0 +1,101 @@
+#!/usr/bin/python
+
+# Check for required environment
+import os,sys
+try:
+    seqExpHome=os.path.normpath(os.environ['SEQ_EXP_HOME'])
+except KeyError:
+    sys.stderr.write('SEQ_EXP_HOME must be set to create links.\n')
+    sys.exit(1)
+if os.path.realpath(os.getcwd()) != os.path.realpath(seqExpHome):
+    sys.stderr.write('Must be in SEQ_EXP_HOME ('+seqExpHome+') to create links.\n')
+    sys.exit(1)
+
+# Set default list of subdirectories for the experiment hub/ here
+hub=os.path.join(seqExpHome,'hub')
+try:
+    subdirs=os.listdir(hub)
+except OSError:
+    sys.stderr.write('Unable to access '+hub+'.\n')
+    sys.exit(1)
+
+# Parse command line arguments
+import optparse
+parser=optparse.OptionParser()
+parser.add_option('-d','--defaults',dest='linkdir',metavar='PATH',
+                  default=os.path.join(os.environ['HOME'],'.suites','.default_links'),
+                  help='Path to directory of default links [default: %default]')
+parser.add_option('-e','--experiment',dest='exp',metavar='NAME',
+                  default=os.path.basename(seqExpHome),
+                  help='Experiment name [default: %default]')
+parser.add_option('-f','--force',dest='force',action='store_true',default=False,
+                  help='Remove and replace existing links if they exist')
+parser.add_option('-s','--sub',dest='subs',metavar='DIR',default=subdirs,action="append",
+                  help='Subdirectory to create in hub/ [default: %default]')
+parser.add_option('-v','--verbose',dest='verbose',action='store_true',default=False,
+                  help='Verbose output')
+parser.add_option('--dry-run',dest='dryrun',action='store_true',default=False,
+                  help='Do not create links or targets')
+parser.add_option('--no-create',dest='create',action='store_false',default=True,
+                  help='Do not create target directories on remote hosts')
+(options, args)=parser.parse_args()
+
+# Check for incompatible arguments
+create=options.create
+if options.dryrun:
+    create=False
+    if options.force:
+        sys.stderr.write('Conflicting options specified:  --dry-run and --force.\n')
+        sys.exit(1)
+
+# Check for default links
+try:
+    machs=os.listdir(options.linkdir)
+except OSError:
+    sys.stderr.write(options.linkdir+' is not a valid default link directory.\n')
+    sys.exit(1)
+
+# Create subdirectories and links
+if create: import subprocess
+for subdir in options.subs:
+    local=os.path.join(seqExpHome,'hub',subdir)
+    try:
+        os.mkdir(local)
+    except OSError:
+        if not os.path.isdir(local):
+            sys.stderr.write('Unable to create '+local+'.\n')
+            sys.exit(1)
+    for mach in machs:
+        link=os.path.join(local,mach)
+        target=os.path.join(os.readlink(os.path.join(options.linkdir,mach)),options.exp,subdir)
+        if options.force:
+            if os.path.islink(link):
+                try:
+                    os.remove(link)
+                except OSError:
+                    sys.stderr.write('Warning: unable to remove '+link+' despite force.\n')
+            if os.path.lexists(link):
+                sys.stderr.write('Cannot clean up non-link '+link+'.\n')
+                sys.exit(1)
+        if os.path.lexists(link):
+            sys.stderr.write('Link '+link+' exists: clean up or use --force to remove existing links.\n')
+            if not options.dryrun: sys.exit(1)
+        try:
+            if not options.dryrun: os.symlink(target,link)
+        except OSError:
+            sys.stderr.write('Unable to link '+link+'.\n')
+            sys.exit(1)
+        if options.verbose: sys.stdout.write('Linked '+link+' => '+target+'\n')
+        if create:
+            cmd="ssh "+mach+" 'mkdir -p "+target+"; if [[ ! -d "+target+" ]] ; then echo 1 ; else echo 0 ; fi'"
+            p=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=True)
+            if len(p.stderr.read()) > 0:
+                sys.stderr.write('Warning: STDERR returned from '+mach+' is '+p.stderr.read())
+            if int(p.stdout.read()) == 0:
+                if options.verbose: sys.stdout.write('Created '+mach+':'+target+'\n')
+            else:
+                sys.stderr.write('Warning: Unable to create target on '+mach+'\n')
+
+                
+                
+                                 
