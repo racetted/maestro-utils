@@ -1,0 +1,16 @@
+#!/bin/ksh
+
+packageHome=${1}
+maestroModuleDepot=${2}
+depfile=${3}
+
+while read dep ; do
+  depDomain=$(echo $dep | cut -d ' ' -f 1)
+  depModule=$(echo $dep | cut -d ' ' -f 2)
+  eval $(ssmuse sh -d ${maestroModuleDepot}/${depDomain} -p ${depModule})
+  modlink=${packageHome}/ref/modules/${MAESTRO_MODULE_NAME}
+  rm -f ${modlink}
+  ln -s ${MAESTRO_MODULE_PATH}/mod ${modlink}
+  process_deplist ${packageHome} ${maestroModuleDepot} ${MAESTRO_MODULE_PATH}/etc/deplist
+done <${depfile}
+
