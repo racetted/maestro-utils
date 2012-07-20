@@ -14,8 +14,10 @@ The content of the experiment directory defines the experiment in question.  It
 is assumed that the directory has this form (This is a minimum; other elements
 may also be present):
     MyExpt
-        MyExpt.cfg
+        experiment.cfg
         flow.xml
+        resources
+            resources.cfg
         modules
             module_1
                 module_1.cfg
@@ -64,6 +66,7 @@ unified sequencer."""
 # v1_02   Racette D.      July 21 2010 Modified experiment structure
 # v1_03   Racette D.      Aug. 24 2010 Removing Scoping
 # v1_04   Racette D.      Nov. 20 2010 Changed loop behaviour
+# v1_10   McTaggart-Cowan R. July 2012 Add resource file sourcing
 
 
 from xml.dom              import expatbuilder
@@ -81,9 +84,8 @@ class T_Chain:
     methods that accomplish this."""
 
     def __init__(self, s_exptPath, s_NodePath, s_outFileName):
-
                                         # path to the experiment directory
-        self.s_exptPath = s_exptPath
+        self.s_exptPath = s_exptPath        
         self.s_exptName = os.path.realpath(s_exptPath).split('/')[-1]
         self.s_currentNodeDir ='..'     # string: directory of current node
 
@@ -112,36 +114,44 @@ class T_Chain:
         # Open the output file, to be dotted by the client
         #
         self.s_pwd = os.getenv('PWD')
-        self.o_dotout = open(s_outFileName, 'w')
-
-        
+        try:
+            self.o_dotout = s_outFileName and open(s_outFileName, 'w') or sys.stdout
+        except IOError:
+            sys.stderr.write("Error: unable to open "+s_outFileName+" for writing\n")
+            sys.exit(1)
 
     def DotTheChain(self):
         """To the *.dot file, write the necessary shell commands to set the
-        variables."""
-
+        variables."""    
         #
         # Establish the starting point of the chain
         #
-        self.o_dotout.write('\n# ' + 'EXPERIMENT' +' '+
-                            self.s_exptName + ':\n')
+        is_stdout = self.o_dotout.name is sys.stdout.name
+        if not is_stdout:
+            self.o_dotout.write('\n# ' + 'EXPERIMENT' +' '+
+                                self.s_exptName + ':')
+
         #experiment config
-        self.__dotCfg(self.o_tree_List[0], "EXPERIMENT" )
-                                        # Advance to first node name sought
+        self.__dotCfg(self.o_tree_List[0], "EXPERIMENT", is_stdout )
+
+        # Disable the getdef utility after experiment.cfg
+        self.o_dotout.write("\nexport SEQ_GETDEF_DISABLED=1\n")
+        
+        # Advance to first node name sought
         self.o_tree_List = self.o_tree_List[1:]
 
         #first module config
-        self.o_dotout.write('\n# ' + 'MODULE' +' '+
-                            self.o_node.getAttribute('name') + ':\n')
+        if not is_stdout:
+            self.o_dotout.write('\n# ' + 'MODULE' +' '+
+                                self.o_node.getAttribute('name') + ':')
 
-        self.__dotCfg(self.o_tree_List[0], self.o_node.tagName)
+        self.__dotCfg(self.o_tree_List[0], self.o_node.tagName, is_stdout )
                                         # Advance to first node name sought
         self.o_tree_List = self.o_tree_List[1:]
 
         #
         # Dot the chain down to the node in question
         #
-
         while self.o_tree_List:
 
             # Search the children
@@ -159,7 +169,7 @@ class T_Chain:
                                         ':\n')
 
                     # Dot the configuration for this link in the chain
-                    self.__dotCfg(self.o_tree_List[0], o_child.tagName)
+                    self.__dotCfg(self.o_tree_List[0], o_child.tagName, is_stdout)
 
                                         # Advance to the node just found
                     self.o_node = o_child
@@ -175,9 +185,10 @@ class T_Chain:
                           self.o_node.getAttribute('name')
 
         # Move the dot file to its final destination
-        self.o_dotout.close()
+        if not is_stdout:
+            self.o_dotout.close()
 
-    def __dotCfg(self, s_cfg, s_nodeType):
+    def __dotCfg(self, s_cfg, s_nodeType, is_stdout):
         """To dot a single configuration file in the chain, write to the *.dot
         file the necessary shell commands to set the variables.  In addition,
         track the private and interface variables and add any commands required
@@ -196,32 +207,32 @@ class T_Chain:
         # Construct the path to the configuration file
 	
 	#skip out loops if included in the node path
-
-	print "type =" + s_nodeType
 	if  s_nodeType == 'TASK' or s_nodeType == 'NPASS_TASK':
-	    s_pathCfg = os.path.join(self.s_exptPath, self.s_currentNodeDir, s_cfg + '.cfg')
+	    s_pathCfg = [os.path.join(self.s_exptPath, self.s_currentNodeDir, s_cfg + '.cfg')]
         elif s_nodeType == 'EXPERIMENT':
-            s_pathCfg = s_pathCfg = os.path.join(self.s_exptPath, 'experiment.cfg')
+            s_pathCfg = [os.path.join(self.s_exptPath, 'experiment.cfg')]
         else: ## container
             self.s_currentNodeDir =  os.path.join(self.s_currentNodeDir, s_cfg)
-            s_pathCfg = os.path.join(self.s_exptPath, self.s_currentNodeDir, 'container.cfg')
-	try:
-            o_cfgFile = open(s_pathCfg, 'r')
-	    self.o_dotout.write("# config file: " + s_pathCfg + "\n")
-            s_input=o_cfgFile.readlines()
-            o_cfgFile.close()
+            s_pathCfg = [os.path.join(self.s_exptPath, self.s_currentNodeDir, 'container.cfg')]
+        for cfgFile in s_pathCfg:            
+            try:
+                o_cfgFile = open(cfgFile, 'r')
+                if not is_stdout: self.o_dotout.write("\n# config file: " + cfgFile + "\n")
+                s_input=o_cfgFile.readlines()
+                o_cfgFile.close()
+                for s_line in s_input:
+                    s_line.lstrip()             # Ignore initial white space
+                                            ## Keep only non-comment lines
+                    if len(s_line) < 2 :  ##or s_line[0] == '#':
+                        continue
+                    self.o_dotout.write(s_line)
+                self.o_dotout.write('\n')
+                    
+            except IOError:
+                # It appears that this node does not have a cfg file
+                if not is_stdout: self.o_dotout.write("# - - - >> Could not open " + cfgFile + "\n")
 
-            for s_line in s_input:
-                s_line.lstrip()             # Ignore initial white space
-                                            # Keep only non-comment lines
-                if len(s_line) < 2 :  ##or s_line[0] == '#':
-                    continue
-                self.o_dotout.write(s_line)
-	    return ()
-
-        except IOError:
-          # It appears that this node does not have a cfg file
-            self.o_dotout.write("# - - - >> Could not open " + s_pathCfg + "\n")
+        return()
 
 def main():    
 
@@ -232,24 +243,24 @@ def main():
     parser.add_option("-n","--node_path",dest="nodeName",default=None,
                       help="Full PATH to the desired node (mandatory)",metavar="PATH")
     parser.add_option("-o","--output",dest="out",default=None,
-                      help="Output dottable FILE containing in-scope variables (mandatory)",metavar="FILE")
+                      help="Output dottable FILE containing in-scope variables (default STDOUT)",metavar="FILE")
     (options,args) = parser.parse_args()
     
     # Check for mandatory arguments
     if not options.nodeName:
-        print "\nError: a fully-qualified node name (--node_path) is required\n"
+        sys.stderr.write("Error: a fully-qualified node name (--node_path) is required\n")
         parser.print_help()
         sys.exit(1)
-    if not options.out:
-        print "\nError: an output file name (--output) is required\n"
-        parser.print_help()
+    if not options.expPath:
+        sys.stderr.write("Error: SEQ_EXP_PATH and --exp_path (-e) are undefined\n")
         sys.exit(1)
-    
-
+    if not os.path.isdir(options.expPath):
+        sys.stderr.write("Error: unable to access "+options.expPath+"\n")
+        sys.exit(1)
 
     MyChain = T_Chain(options.expPath, options.nodeName.lstrip("/"), options.out)
     MyChain.DotTheChain() 
-    
+
     if errorFlag:
        sys.exit(1)
 
