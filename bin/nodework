@@ -3,7 +3,9 @@
 arguments=$*
 
 eval `cclargs_lite $0 \
-  -n        ""                    ""                           "[Node         ]" \
+  -n        ""                    ""                           "[Node               ]" \
+  -base     "0"                   "1"                          "[Return base only   ]" \
+  -ext      ""                    ""                           "[Extension          ]" \
   -h        ""                    ""                           "[Display help       ]" \
   ++ $arguments`
 
@@ -18,9 +20,13 @@ fi
 if [[ $l != "" ]]; then largs="-l $l" ; fi
 mach=$(nodeinfo -n $n $largs | grep node.machine | cut -d "=" -f 2)
 
+# Construct path from base
+workpath=
+if [[ ${base} == 0 ]] ; then workpath=/${n}${ext} ; fi
+
 # Return defined workbase if found - otherwise construct it
-if [ -n "${SEQ_WORKBASE}" ] ; then
-    echo ${mach}:${SEQ_WORKBASE}
+if [[ -n "${SEQ_WORKBASE}" ]] ; then
+    echo ${mach}:${SEQ_WORKBASE}${workpath}
 else
     if [ ! -d "${SEQ_EXP_HOME}" ]; then
 	echo "nodeout error: Invalid path SEQ_EXP_HOME=$SEQ_EXP_HOME"
@@ -40,7 +46,5 @@ else
 	fullnode=$n
 	mach=$(nodeinfo -n $n | grep node.machine | cut -d "=" -f 2)
     fi
-    
-    echo ${mach}:${SEQ_EXP_HOME}/hub/work/${mach}/$(tictac -f %Y%M%D%H%Min%S)
-
+    echo ${mach}:${SEQ_EXP_HOME}/hub/${mach}/work/$(tictac -f %Y%M%D%H%Min%S)${workpath}
 fi

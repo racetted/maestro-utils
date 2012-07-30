@@ -1,7 +1,17 @@
 #!/usr/bin/python
 
+class Hub(dict):
+    """Local distribution hub"""
+
+    def __init__(self,base,name,subs,append=False):
+        """Class constructor"""
+        self.name=name
+        self.path=os.path.join(base,name)
+        self.subs=subs
+        self.append=append
+
 # Check for required environment
-import os,sys
+import os,sys,re,shutil
 try:
     seqExpHome=os.path.normpath(os.environ['SEQ_EXP_HOME'])
 except KeyError:
@@ -14,14 +24,18 @@ if os.path.realpath(os.getcwd()) != os.path.realpath(seqExpHome):
 # Set default list of subdirectories for the experiment hub/ here
 hub=os.path.join(seqExpHome,'hub')
 try:
-    subdirs=os.listdir(hub)
-except OSError:
-    sys.stderr.write('Unable to access '+hub+'.\n')
-    sys.exit(1)
+    fd=open(os.path.join(hub,".subdirs"),"r")
+except IOError:
+    subdirs=[]
+else:
+    subdirs=re.split("\n|\s",fd.read().rstrip())
+    fd.close()
 
 # Parse command line arguments
 import optparse
 parser=optparse.OptionParser()
+parser.add_option('-c','--clean',dest='clean',action='store_true',default=False,
+                  help='Hub link cleanup before construction')
 parser.add_option('-d','--defaults',dest='linkdir',metavar='PATH',
                   default=os.path.join(os.environ['HOME'],'.suites','.default_links'),
                   help='Path to directory of default links [default: %default]')
@@ -38,6 +52,8 @@ parser.add_option('--dry-run',dest='dryrun',action='store_true',default=False,
                   help='Do not create links or targets')
 parser.add_option('--no-create',dest='create',action='store_false',default=True,
                   help='Do not create target directories on remote hosts')
+parser.add_option('--no-listings',dest='listings',action='store_false',default=True,
+                  help='Do not create listing links')
 (options, args)=parser.parse_args()
 
 # Check for incompatible arguments
@@ -48,6 +64,11 @@ if options.dryrun:
         sys.stderr.write('Conflicting options specified:  --dry-run and --force.\n')
         sys.exit(1)
 
+# Set up hub list
+hubs = [Hub(seqExpHome,'hub',subdirs)]
+if options.listings:
+    hubs.append(Hub(seqExpHome,'listings',['listings'],append=True))
+
 # Check for default links
 try:
     machs=os.listdir(options.linkdir)
@@ -55,19 +76,28 @@ except OSError:
     sys.stderr.write(options.linkdir+' is not a valid default link directory.\n')
     sys.exit(1)
 
+# Subdirectory cleanup
+if options.clean:
+    for hub in hubs:
+        for sub in os.listdir(hub.path):
+            if not sub.startswith('.'):
+                local=os.path.join(hub.path,sub)
+                try:
+                    shutil.rmtree(local)
+                except OSError:
+                    try:
+                        os.remove(local)
+                    except OSError:
+                        sys.stderr.write('Unable to remove '+local+'.\n')
+                        sys.exit(1)
+  
 # Create subdirectories and links
 if create: import subprocess
-for subdir in options.subs:
-    local=os.path.join(seqExpHome,'hub',subdir)
-    try:
-        os.mkdir(local)
-    except OSError:
-        if not os.path.isdir(local):
-            sys.stderr.write('Unable to create '+local+'.\n')
-            sys.exit(1)
-    for mach in machs:
-        link=os.path.join(local,mach)
-        target=os.path.join(os.readlink(os.path.join(options.linkdir,mach)),options.exp,subdir)
+for mach in machs:
+    for hub in hubs:
+        link=os.path.join(hub.path,mach)
+        target=os.path.join(os.readlink(os.path.join(options.linkdir,mach)),options.exp)
+        target_append = hub.append and os.path.join(target,hub.name) or target
         if options.force:
             if os.path.islink(link):
                 try:
@@ -81,21 +111,23 @@ for subdir in options.subs:
             sys.stderr.write('Link '+link+' exists: clean up or use --force to remove existing links.\n')
             if not options.dryrun: sys.exit(1)
         try:
-            if not options.dryrun: os.symlink(target,link)
+            if not options.dryrun: os.symlink(target_append,link)
         except OSError:
             sys.stderr.write('Unable to link '+link+'.\n')
             sys.exit(1)
-        if options.verbose: sys.stdout.write('Linked '+link+' => '+target+'\n')
+        if options.verbose: sys.stdout.write('Linked '+link+' => '+target_append+'\n')
         if create:
-            cmd="ssh "+mach+" 'mkdir -p "+target+"; if [[ ! -d "+target+" ]] ; then echo 1 ; else echo 0 ; fi'"
+            subs = [os.path.join(target,sub) for sub in hub.subs]
+            cmd="ssh "+mach+" 'mkdir -p "+" ".join(subs)+"; if [[ ! -d "+" && -d ".join(subs)+" ]] ; then echo 1 ; else echo 0 ; fi'"
             p=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=True)
-            if len(p.stderr.read()) > 0:
-                sys.stderr.write('Warning: STDERR returned from '+mach+' is '+p.stderr.read())
+            stderr=p.stderr.read()
+            if len(stderr) > 0:
+                sys.stderr.write('Warning: STDERR returned from '+mach+' is '+stderr)
             if int(p.stdout.read()) == 0:
-                if options.verbose: sys.stdout.write('Created '+mach+':'+target+'\n')
+                if options.verbose:
+                    for sub in subs:
+                        sys.stdout.write('Created '+mach+':'+sub+'\n')
             else:
-                sys.stderr.write('Warning: Unable to create target on '+mach+'\n')
+                sys.stderr.write('Warning: Unable to create local hub on '+mach+'\n')
 
-                
-                
                                  
