@@ -118,16 +118,17 @@ for mach in machs:
         if options.verbose: sys.stdout.write('Linked '+link+' => '+target_append+'\n')
         if create:
             subs = [os.path.join(target,sub) for sub in hub.subs]
-            cmd="ssh "+mach+" 'mkdir -p "+" ".join(subs)+"; if [[ ! -d "+" && -d ".join(subs)+" ]] ; then echo 1 ; else echo 0 ; fi'"
-            p=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=True)
-            stderr=p.stderr.read()
-            if len(stderr) > 0:
-                sys.stderr.write('Warning: STDERR returned from '+mach+' is '+stderr)
-            if int(p.stdout.read()) == 0:
-                if options.verbose:
-                    for sub in subs:
-                        sys.stdout.write('Created '+mach+':'+sub+'\n')
-            else:
-                sys.stderr.write('Warning: Unable to create local hub on '+mach+'\n')
+            if subs:
+                cmd="ssh "+mach+" 'mkdir -p "+" ".join(subs)+"; if [[ ! -d "+" && -d ".join(subs)+" ]] ; then echo 1 ; else echo 0 ; fi'"
+                p=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=True)
+                stderr=p.stderr.read()
+                if len(stderr) > 0:
+                    sys.stderr.write('Warning: STDERR returned from '+mach+' is '+stderr)
+                if int(p.stdout.read()) == 0:
+                    if options.verbose:
+                        for sub in subs:
+                            sys.stdout.write('Created '+mach+':'+sub+'\n')
+                else:
+                    sys.stderr.write('Warning: Unable to create local hub on '+mach+'\n')
 
                                  
