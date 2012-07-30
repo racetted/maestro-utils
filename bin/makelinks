@@ -45,7 +45,7 @@ parser.add_option('-e','--experiment',dest='exp',metavar='NAME',
 parser.add_option('-f','--force',dest='force',action='store_true',default=False,
                   help='Remove and replace existing links if they exist')
 parser.add_option('-s','--sub',dest='subs',metavar='DIR',default=subdirs,action="append",
-                  help='Subdirectory to create in hub/ [default: %default]')
+                  help='Subdirectories to create in remote hubs [default: %default]')
 parser.add_option('-v','--verbose',dest='verbose',action='store_true',default=False,
                   help='Verbose output')
 parser.add_option('--dry-run',dest='dryrun',action='store_true',default=False,
