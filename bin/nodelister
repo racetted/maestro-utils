@@ -19,13 +19,27 @@ function viewfile
 {
    source_file=$1
    dest_file=$2
-   if [[ -e ${source_file} ]]; then
-      if [[ ${dest_file} == "" ]]; then
-         gunzip -c ${source_file}
-      else
-         gunzip -c ${source_file} > ${dest_file}
-      fi
-   fi
+   tmp_file=/tmp/listing_$$.gz
+   found=0
+   if [[ ${source_file} != "" ]]; then
+     if [[ -e ${source_file} ]] ; then
+	 ln -s ${source_file} ${tmp_file}
+     else
+	 host=${source_file##*@}
+	 scp -q $host:$source_file ${tmp_file} 2>/dev/null || scp -q $host:${source_file%%@*} ${tmp_file}
+     fi
+     if [[ -e ${tmp_file} ]]; then
+	 found=1
+         if [[ $dest_file == "" ]]; then
+            gunzip -c ${tmp_file}
+         else
+            echo "Writing listing to ${dest_file}"
+            gunzip -c ${tmp_file} > ${dest_file}
+         fi 
+         rm -f ${tmp_file}
+     fi
+  fi
+  test $found == 0 && echo $fullnode $type 'listing not available'
 }
 
 Usage="
@@ -33,7 +47,7 @@ Nodelister  \n
 \n
 \t     Shows the latest listing of the node \n
 \n
-\t     Usage: nodelister -n node [-l loopargs] [-type [success,abort]] -d datestamp [-list -o outfile] [-f listfile] \n
+\t     Usage: nodelister -n node [-l loopargs] [-type [success,abort]] -d datestamp [-list -o outfile] [-f listfile]\n
 \n
 \t\t        Where: \n
 \t\t\t          node is the full node name. ex: /regional/assimilation/00/gen_cutoff \n
@@ -88,12 +102,8 @@ if [[ $n != "" && $f != "" ]]; then
     exit 1
 fi
 
-if [[ $f != "" ]]; then
-   if [[ -e $f ]]; then
-      viewfile $f $o
-   else
-      printf "File Not Found: $f\n"
-   fi
+if [[ "$f" != "" ]]; then
+   viewfile $f $o
    exit 0
 fi
 
@@ -135,21 +145,6 @@ if [[ $list -eq 1 ]]; then
    done
 else 
        latestlink=$(ls -rt1 $latest_dir/$fullnode.${datestamp}.$type@* 2> /dev/null | tail -1)
-       found=0
-       if [[ ${latestlink} != "" ]]; then
-          host=${latestlink##*@}
-          scp $host:$latestlink /tmp/listing_$$.gz
-          if [[ -e /tmp/listing_$$.gz ]]; then
-	      found=1
-              if [[ $o == "" ]]; then
-                 gunzip -c /tmp/listing_$$.gz
-              else
-                 echo "Writing listing to $o"
-                 gunzip -c /tmp/listing_$$.gz > $o 
-              fi 
-              rm -f /tmp/listing_$$.gz
-          fi
-       fi
-       test $found == 0 && echo $fullnode $type 'listing not available'
+       viewfile ${latestlink} $o
 fi
 
