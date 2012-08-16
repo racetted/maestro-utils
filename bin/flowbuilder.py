@@ -13,7 +13,7 @@ import os
 import sys
 import optparse
 
-debug=False
+
 
 def main():    
 
@@ -23,12 +23,16 @@ def main():
 
     # Command line argument parsing
     parser = optparse.OptionParser()
-    parser.add_option("-e","--exp_path",dest="expPath",default=os.getenv('SEQ_EXP_PATH'),
-                      help="Full experiment PATH (default SEQ_EXP_PATH)",metavar="PATH")
+    parser.add_option("-e","--exp_path",dest="expPath",default=os.getenv('SEQ_EXP_HOME'),
+                      help="Full experiment PATH (default SEQ_EXP_HOME)",metavar="PATH")
     parser.add_option("-o","--output",dest="outFileName",default=None,
                       help="Output xml FILE containing the full xml flow, default will be stdout",metavar="FILE")
+    parser.add_option("-d","--debug",dest="debug",default=False,
+                      help="Debug set to True or False",metavar="TrueOrFalse")
     (options,args) = parser.parse_args()
     
+    global debug 
+    debug = options.debug
     entryXmlFile = options.expPath+'/EntryModule/flow.xml'
     outputXmlDocument = recursiveParseXml(entryXmlFile,options.expPath)
     outputXml(outputXmlDocument,options.outFileName)
@@ -37,7 +41,7 @@ def main():
 # Recursive command to build the XML tree
 #      xmlFile: path to the xml file to open
 #      expPath: path of the experiment
-def recursiveParseXml(xmlFileName, expPath ):
+def recursiveParseXml(xmlFileName, expPath):
 
 	#open the new xml 
 	currentDocumentXml = parse(xmlFileName)
@@ -55,6 +59,8 @@ def recursiveParseXml(xmlFileName, expPath ):
 
 			#put the child's flow inside the insertion point 
 			if debug: print "Replacing "+ moduleIterator.getAttribute("name")+ " with "+childDocumentXml.documentElement.getAttribute("name")  
+                        if debug: print "Renaming "+ childDocumentXml.documentElement.getAttribute("name") + " to " +   moduleIterator.getAttribute("name") + " in child module." 
+                        childDocumentXml.documentElement.setAttribute("name", moduleIterator.getAttribute("name"))
 			#grab the child's headnode and import it in the current document
 		        nodesToAppend = currentDocumentXml.importNode(childDocumentXml.documentElement, True)
 			#and replace the current module's node with the child's  

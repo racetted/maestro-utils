@@ -238,8 +238,8 @@ def main():
 
     # Command line argument parsing
     parser = optparse.OptionParser()
-    parser.add_option("-e","--exp_path",dest="expPath",default=os.getenv('SEQ_EXP_PATH'),
-                      help="Full experiment PATH (default SEQ_EXP_PATH)",metavar="PATH")
+    parser.add_option("-e","--exp_path",dest="expPath",default=os.getenv('SEQ_EXP_HOME'),
+                      help="Full experiment PATH (default SEQ_EXP_HOME)",metavar="PATH")
     parser.add_option("-n","--node_path",dest="nodeName",default=None,
                       help="Full PATH to the desired node (mandatory)",metavar="PATH")
     parser.add_option("-o","--output",dest="out",default=None,
