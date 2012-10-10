@@ -1,5 +1,5 @@
 # this file contains common config that is sourced by all makefiles
-VERSION=1.2.1
+VERSION=1.2.1.4
 ARCH=all
 SWDEST=$(shell pwd)/..
 

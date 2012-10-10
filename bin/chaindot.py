@@ -67,6 +67,7 @@ unified sequencer."""
 # v1_03   Racette D.      Aug. 24 2010 Removing Scoping
 # v1_04   Racette D.      Nov. 20 2010 Changed loop behaviour
 # v1_10   McTaggart-Cowan R. July 2012 Add resource file sourcing
+#         Racette D.      Oct 2012     Clarified output, added MODULE_ARGUMENTS files 
 
 
 from xml.dom              import expatbuilder
@@ -87,7 +88,7 @@ class T_Chain:
                                         # path to the experiment directory
         self.s_exptPath = s_exptPath        
         self.s_exptName = os.path.realpath(s_exptPath).split('/')[-1]
-        self.s_currentNodeDir ='..'     # string: directory of current node
+        self.s_currentNodeDir =''     # string: directory of current node
 
                                         # list: node-path in expt to sought node
         self.o_tree_List = s_NodePath.split('/')
@@ -127,23 +128,17 @@ class T_Chain:
         # Establish the starting point of the chain
         #
         is_stdout = self.o_dotout.name is sys.stdout.name
-        if not is_stdout:
-            self.o_dotout.write('\n# ' + 'EXPERIMENT' +' '+
-                                self.s_exptName + ':')
 
         #experiment config
         self.__dotCfg(self.o_tree_List[0], "EXPERIMENT", is_stdout )
 
         # Disable the getdef utility after experiment.cfg
         self.o_dotout.write("\nexport SEQ_GETDEF_DISABLED=1\n")
-        
+
         # Advance to first node name sought
         self.o_tree_List = self.o_tree_List[1:]
 
         #first module config
-        if not is_stdout:
-            self.o_dotout.write('\n# ' + 'MODULE' +' '+
-                                self.o_node.getAttribute('name') + ':')
 
         self.__dotCfg(self.o_tree_List[0], self.o_node.tagName, is_stdout )
                                         # Advance to first node name sought
@@ -164,12 +159,10 @@ class T_Chain:
                                         # Is this the sought child?
                 if self.o_tree_List[0] == o_child.getAttribute('name'):
                     l_ChildFound=True
-                    self.o_dotout.write('\n# ' + o_child.tagName +' '+
-                                                 o_child.getAttribute('name') +
-                                        ':\n')
 
                     # Dot the configuration for this link in the chain
                     self.__dotCfg(self.o_tree_List[0], o_child.tagName, is_stdout)
+
 
                                         # Advance to the node just found
                     self.o_node = o_child
@@ -194,6 +187,7 @@ class T_Chain:
         track the private and interface variables and add any commands required
         by these."""
 
+        s_pathCfg=[] 
         s_nodeType = s_nodeType.upper() # Ensure upper case
 
         if l_debug: print "in dotCfg, s_cfg=", s_cfg, "\n", \
@@ -201,8 +195,9 @@ class T_Chain:
 
         if (s_nodeType == 'MODULE'):    # If this is a new module
                                         # Reset the config-file path
+            self.__dotCfg(s_cfg,"MODULE_ARGUMENTS",is_stdout)
+            # s_pathCfg=[os.path.join(self.s_exptPath, self.s_currentNodeDir, s_cfg + '.cfg')]
             self.s_currentNodeDir = 'modules'
-
 
         # Construct the path to the configuration file
 	
@@ -211,13 +206,18 @@ class T_Chain:
 	    s_pathCfg = [os.path.join(self.s_exptPath, self.s_currentNodeDir, s_cfg + '.cfg')]
         elif s_nodeType == 'EXPERIMENT':
             s_pathCfg = [os.path.join(self.s_exptPath, 'experiment.cfg')]
+        elif s_nodeType == 'MODULE_ARGUMENTS':
+            s_pathCfg = [os.path.join(self.s_exptPath, self.s_currentNodeDir, s_cfg + '.cfg')]
         else: ## container
             self.s_currentNodeDir =  os.path.join(self.s_currentNodeDir, s_cfg)
-            s_pathCfg = [os.path.join(self.s_exptPath, self.s_currentNodeDir, 'container.cfg')]
+            s_pathCfg = s_pathCfg + [os.path.join(self.s_exptPath, self.s_currentNodeDir, 'container.cfg')]
         for cfgFile in s_pathCfg:            
             try:
                 o_cfgFile = open(cfgFile, 'r')
-                if not is_stdout: self.o_dotout.write("\n# config file: " + cfgFile + "\n")
+
+                if not is_stdout:
+                    self.o_dotout.write('\n## <CONFIG type=\"' + s_nodeType +'\" name=\"' + s_cfg + '\" path=\"'+ cfgFile + '\" > \n')
+
                 s_input=o_cfgFile.readlines()
                 o_cfgFile.close()
                 for s_line in s_input:
@@ -227,6 +227,9 @@ class T_Chain:
                         continue
                     self.o_dotout.write(s_line)
                 self.o_dotout.write('\n')
+
+                if not is_stdout:
+                    self.o_dotout.write('\n## </CONFIG type=\"' + s_nodeType +'\" name=\"' + s_cfg + '\" path=\"'+ cfgFile + '\" > \n')
                     
             except IOError:
                 # It appears that this node does not have a cfg file
