@@ -1,0 +1,16 @@
+#!/bin/ksh
+
+
+arguments=$*
+
+eval `cclargs_lite $0 \
+  -c        ""                    ""                           "[cfg to run         ]" \
+  -o        ""                    ""                           "[output results     ]" \
+  -i        ""                    ""                           "[input config to eval     ]" \
+  -h        ""                    ""                           "[Display help       ]" \
+  ++ $arguments`                                                                                                                                                                                                                   
+
+. $c 
+
+while read LINE ; do eval echo $(echo $LINE | sed 's/;/\n/') ; done < $i > $o  
+

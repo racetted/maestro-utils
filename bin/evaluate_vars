@@ -1,0 +1,81 @@
+#!/bin/ksh
+
+
+arguments=$*
+
+eval `cclargs_lite $0 \
+  -n        ""                    ""                           "[Node               ]" \
+  -l        ""                    ""                           "[Loop arguments     ]" \
+  -d        ""                    ""                           "[Datestamp          ]" \
+  -v        ""                    ""                           "[Verbose            ]" \
+  -m        ""                    ""                           "[Target exec host   ]" \
+  -o        ""                    ""                           "[Target file or stdout  ]" \
+  -f        "0"                   "1"                          "[Evaluate full config seen at node]"\
+  -h        ""                    ""                           "[Display help       ]" \
+  ++ $arguments`                                                                                                                                                                                                                   
+
+if [[ $v != "" ]] ; then  
+  set -x
+fi 
+if [[ $d != "" ]] ; then  
+  export SEQ_DATE=$d 
+fi 
+                                                                                                                                                                                                                                   
+if [[ -n "${SEQ_BIN}" ]] ; then                                                                                                                                                                                                    
+    nodeinfo=${SEQ_BIN}/nodeinfo                                                                                                                                                                                                   
+else                                                                                                                                                                                                                               
+    nodeinfo=$(which nodeinfo)                                                                                                                                                                                                     
+fi                                                                                                                                                                                                                                 
+if [[ $l != "" ]]; then largs="-l $l" ; fi                                                                                                                                                                                         
+
+
+if [[ $m == "" ]] ; then
+    mach=$(nodeinfo -n $n $largs | grep node.machine | cut -d "=" -f 2) 
+else
+    mach=$m
+fi
+
+if [[ $f == "0" ]] ; then 
+    config=$(nodeinfo -n $n $largs | grep node.configpath | cut -d "/" -f 3-) 
+    config="$SEQ_EXP_HOME/modules/$config"
+    if [[ ! -f $config ]] ; then 
+     echo "Config $config does not exist, so comparison cannot be made. Exitting..." 
+     exit 1
+    fi
+fi
+
+if [[ "$l" != "" ]] ; then 
+    loops="-l $l"
+fi 
+
+name=`echo $n | tr '/' '_'`
+
+## get config variables
+$SEQ_BIN/nodeinfo -n $n $loops -f var -o $HOME/tmp/$name.vars$$ 1>/dev/null 
+cat $HOME/tmp/$name.vars$$ | sed '/"export SEQ_GETDEF_DISABLED=1"/d' > $HOME/tmp/$name.vars$$.1 
+mv  $HOME/tmp/$name.vars$$.1 $HOME/tmp/$name.vars$$
+. $HOME/tmp/$name.vars$$ 
+
+# get variable and environment space from target host
+
+echo "# Logging in to $mach. Stand by..." 
+
+echo "   . $HOME/tmp/$name.vars$$ 
+         ${SEQ_UTILS_BIN}/chaindot.py -e ${SEQ_EXP_HOME} -n ${SEQ_NODE} -o \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$
+         if [[ $f == "0" ]] ; then 
+             ${SEQ_UTILS_BIN}/runvars -i $config -o $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ -c \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ 
+         else
+             ${SEQ_UTILS_BIN}/runvars -i \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ -o $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ -c \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ 
+         fi
+         " | ssh $mach bash --login 1>/dev/null 
+
+# show results, filter out empty-lines
+if [[ "$o" == "" ]] ; then  
+    cat $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ | sed '/^$/d' 
+else 
+    cat $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ | sed '/^$/d' > $o  
+fi
+
+rm -f $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ $HOME/tmp/name.vars$$ 
+
+
