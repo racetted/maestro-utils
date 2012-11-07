@@ -60,22 +60,22 @@ tmpfile=${TMPDIR:-/tmp}/task_setup_env$$
 set >${tmpfile}
 
 # Call task setup to generate task directory structure
-setup_truepath=${TASK_BASEDIR}/.setup/task_setup_truepath
 if [[ ${TASK_SETUP_NOEXEC:-0} > 0 ]] ; then
     printf '** skipping TASK_SETUP execution with $TASK_SETUP_NOEXEC=%s **\n' ${TASK_SETUP_NOEXEC}
-    if [[ ! -f ${setup_truepath} ]] ; then
-	setup_truepath=$(which true_path)
-	printf '\tUnable to find true_path in %s ... will use %s\n' ${TASK_BASEDIR} ${setup_truepath}
-    fi
 else
     printf "** TASK_SETUP begins **\n"
-    task_setup-0.9.4.py --environment ${tmpfile} ${arglist} || exit 1
+    task_setup.py --environment ${tmpfile} ${arglist} || exit 1
     printf "** TASK_SETUP ends **\n"
 fi
 
 # Export 
 rm -f ${tmpfile}
 if [ -n "${TASK_BASEDIR}" ] ; then
+  setup_truepath=${TASK_BASEDIR}/.setup/task_setup_truepath
+  if [[ ! -x ${setup_truepath} ]] ; then
+    setup_truepath=$(which true_path)
+    printf '\tUnable to find true_path in %s ... will use %s\n' ${TASK_BASEDIR} ${setup_truepath}
+  fi
   if [ -d ${TASK_BASEDIR}/bin ] ; then export TASK_BIN=$(${setup_truepath} ${TASK_BASEDIR}/bin) ; fi
   if [ -d ${TASK_BASEDIR}/work ] ; then export TASK_WORK=$(${setup_truepath} ${TASK_BASEDIR}/work) ; fi
   if [ -d ${TASK_BASEDIR}/input ] ; then export TASK_INPUT=$(${setup_truepath} ${TASK_BASEDIR}/input) ; fi

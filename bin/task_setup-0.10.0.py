@@ -63,7 +63,7 @@ SECTION CLASS
     force           - Force action despite warnings.
 """
 
-__version__ = "0.9.4"
+__version__ = "0.10.0"
 __author__  = "Ron McTaggart-Cowan (ron.mctaggart-cowan@ec.gc.ca)"
 
 #---------
@@ -101,7 +101,7 @@ def which(name,verbose=True):
                 if os.access(fullname,os.X_OK): return(fullname) 
         except:
             continue
-    if (verbose): print "Warning: unable to find "+name+" in path \nPATH="+os.environ['PATH']
+    if (verbose): print "Warning: unable to find "+name+" in path\nPATH="+os.environ['PATH']
     return('')  
 
 def path2host(machine,path):
@@ -142,20 +142,19 @@ class Section(list):
                 keywords = delim.findall(elements[i])
                 for keyword in keywords:
                     if not keyword: continue
-                    this_keyword = os.environ.get(keyword)
-                    if not this_keyword:
+                    try:
+                        this_keyword = os.environ[keyword]
+                    except KeyError:
+                        vartype = 'environment'
                         if self.set:
-                            vartype = 'unknown'
                             try:
                                 this_keyword = self.set[keyword]
+                                vartype = 'found'
                             except KeyError:
                                 vartype = 'environment/set'
-                        else:
-                            vartype = 'environment'
-                        if not this_keyword:
+                        if vartype is not 'found':
                             warnline = "Error: "+vartype+" variable "+keyword+" undefined ... empty substitution performed"
                             sys.stderr.write(warnline+'\n')
-                            if (self.verbosity): print warnline
                             this_keyword = ''
                     elements[i] = re.sub(delim_start+keyword+delim_end,this_keyword,elements[i])
                 if i == 0:
@@ -229,7 +228,7 @@ class Section(list):
         entry["link_host"] = link_host
         entry["link"] = link
         entry["target_host"] = target_host
-        entry["target_type"] = lastSlash.search(rawLink) and 'directory' or 'file'
+        entry["target_type"] = lastSlash.search(rawLink) and 'directory' or 'file'        
         entry["target"] = self._executeEmbedded(target)
         if search_path:
             entry["target"] = [which(target) for target in entry["target"]]
@@ -271,6 +270,7 @@ class Config(dict):
         self.taskdir = taskdir
         self.setFile = set
         self.set = None
+        self.sectionList = []
         self.callFile = self._createTmpFile(sys.argv)
         self.envFile = self._createTmpFile(os.environ)
         self["file"] = file
@@ -606,12 +606,23 @@ class Config(dict):
                             currentSection = None
                         else:
                             self["sections"][currentSection] = Section(currentSection,set=self.set,cfg=self["file"])
-                if (currentSection and not head):                    
+                            self.sectionList.append(currentSection)
+                if (currentSection and not head):
                     self["sections"][currentSection].add(line,currentSection in self.search_path_sections)
         for force in self.force_sections:
             self["sections"][force] = Section(force)
         self._special_appends()
         return(self.ok)
+
+    def write(self,fd):
+        """Write the config file sections"""
+        for section in self.sectionList:
+            fd.write('#<'+section+'>\n')
+            for entry in self["sections"][section]:
+                append = (entry["target_type"] == 'directory') and '/' or ''
+                host = (entry["target_host"]) and entry["target_host"]+':' or ''
+                fd.write('# '+entry["link"]+append+' '+host+':'.join(entry["target"])+'\n')
+            fd.write('#</'+section+'>\n')
     
     def link(self):
         """Perform subdirectory creation and linking operations"""
@@ -740,7 +751,7 @@ class Config(dict):
                         else:
                             print "Error: unable to link "+dest_path_short+" => "+src_file_prefix+true_src_file+" ... source file is unavailable"
                             status = self.error
-            print "  </"+section+">"
+            if (self.verbosity): print "  </"+section+">"
         return(status)
 
 # Executable segment
@@ -759,6 +770,8 @@ if __name__ == "__main__":
                       help="force action (ignore warnings)",default=False)
     parser.add_option("-e","--environment",dest="environment",default=None,
                       help="text FILE containing the environment in which to run",metavar="FILE")
+    parser.add_option("-d","--dry-run",dest="dryrun",action="store_true",
+                      help="handle configuration file without acting on it",default=False)
     (options,args) = parser.parse_args()
 
     # Ensure that the user has provided a configuration file
@@ -777,6 +790,10 @@ if __name__ == "__main__":
     else:
         if cfg.verbosity: print " *** Error: task_setup.py unable to continue *** "
         sys.exit(1)
+    if options.dryrun:
+        cfg.write(sys.stdout)
+        del cfg
+        sys.exit(0)
     if cfg.link():
         del cfg
 	sys.exit(0)

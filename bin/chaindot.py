@@ -75,6 +75,7 @@ from xml.dom              import Node
 import os
 import sys
 import optparse
+import subprocess
 
 l_debug = False
 errorFlag = False
@@ -163,10 +164,18 @@ class T_Chain:
                     # Dot the configuration for this link in the chain
                     self.__dotCfg(self.o_tree_List[0], o_child.tagName, is_stdout)
 
-
-                                        # Advance to the node just found
+                    # Advance to the node just found
                     self.o_node = o_child
-                                        # Advance to the next node name sought
+                    if  (o_child.tagName == "SWITCH"):
+                        #advance to resulting node of switch
+                        answer=self.__switchAnswer(o_child.getAttribute('type'))
+                        for o_child_answer in self.o_node.childNodes:
+                            if o_child_answer.nodeType != Node.ELEMENT_NODE:
+                                continue
+                            if (o_child_answer.getAttribute('name') == answer):
+                                self.o_node = o_child_answer
+ 
+                    # Advance to the next node name sought
                     self.o_tree_List = self.o_tree_List[1:]
                     break
 
@@ -236,6 +245,18 @@ class T_Chain:
                 if not is_stdout: self.o_dotout.write("# - - - >> Could not open " + cfgFile + "\n")
 
         return()
+ 
+    def __switchAnswer(self, s_switchType):
+
+        if (s_switchType == 'datestamp_hour'):
+            try:
+                proc = subprocess.Popen([os.getenv('SEQ_BIN') + "/tictac","-f","%H"], stdout=subprocess.PIPE)
+                out = proc.stdout.read().rstrip('\n')
+            except OSError:
+                print("tictac not found. Please load your maestro ssm package.\n")
+                sys.exit(1)
+            return (out)  
+    
 
 def main():    
 

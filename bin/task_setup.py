@@ -1,1 +1,1 @@
-task_setup-0.9.4.py
+task_setup-0.10.0.py

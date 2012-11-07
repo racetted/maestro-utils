@@ -12,5 +12,6 @@ eval `cclargs_lite $0 \
 
 . $c 
 
-while read LINE ; do eval echo $(echo $LINE | sed 's/;/\n/') ; done < $i > $o  
+unset SEQ_GETDEF_DISABLED
+while read LINE ; do eval echo $(echo $LINE | sed 's/;/\n/g') ; done < $i > $o  
 

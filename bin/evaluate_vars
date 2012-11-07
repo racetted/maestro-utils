@@ -28,18 +28,21 @@ else
 fi                                                                                                                                                                                                                                 
 if [[ $l != "" ]]; then largs="-l $l" ; fi                                                                                                                                                                                         
 
+rm -f $TMPDIR/nodeinfo.$$ || ( echo "Error: unable to delete $TMPDIR/nodeinfo.$$. Exiting..." ; exit 1 ) 
+$nodeinfo -n $n $largs > $TMPDIR/nodeinfo.$$
+ 
 
 if [[ $m == "" ]] ; then
-    mach=$(nodeinfo -n $n $largs | grep node.machine | cut -d "=" -f 2) 
+    mach=$(cat $TMPDIR/nodeinfo.$$ | grep node.machine | cut -d "=" -f 2) 
 else
     mach=$m
 fi
 
 if [[ $f == "0" ]] ; then 
-    config=$(nodeinfo -n $n $largs | grep node.configpath | cut -d "/" -f 3-) 
+    config=$(cat $TMPDIR/nodeinfo.$$ | grep node.configpath | cut -d "/" -f 3-) 
     config="$SEQ_EXP_HOME/modules/$config"
     if [[ ! -f $config ]] ; then 
-     echo "Config $config does not exist, so comparison cannot be made. Exitting..." 
+     echo "Config $config does not exist, so comparison cannot be made. Exiting..." 
      exit 1
     fi
 fi
@@ -50,24 +53,32 @@ fi
 
 name=`echo $n | tr '/' '_'`
 
+
+
+type=$(cat $TMPDIR/nodeinfo.$$ | grep node.type | cut -d "=" -f 2)
+
 ## get config variables
 $SEQ_BIN/nodeinfo -n $n $loops -f var -o $HOME/tmp/$name.vars$$ 1>/dev/null 
-cat $HOME/tmp/$name.vars$$ | sed '/"export SEQ_GETDEF_DISABLED=1"/d' > $HOME/tmp/$name.vars$$.1 
-mv  $HOME/tmp/$name.vars$$.1 $HOME/tmp/$name.vars$$
-. $HOME/tmp/$name.vars$$ 
+. $HOME/tmp/$name.vars$$
+
+workbase=$(${SEQ_UTILS_BIN}/nodework -n ${SEQ_NODE} -base | cut -d ':' -f 2)
 
 # get variable and environment space from target host
 
 echo "# Logging in to $mach. Stand by..." 
 
-echo "   . $HOME/tmp/$name.vars$$ 
+echo "   . $HOME/tmp/$name.vars$$
+         export SEQ_WORKBASE=$workbase
          ${SEQ_UTILS_BIN}/chaindot.py -e ${SEQ_EXP_HOME} -n ${SEQ_NODE} -o \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$
          if [[ $f == "0" ]] ; then 
              ${SEQ_UTILS_BIN}/runvars -i $config -o $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ -c \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ 
          else
              ${SEQ_UTILS_BIN}/runvars -i \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ -o $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ -c \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ 
          fi
-         " | ssh $mach bash --login 1>/dev/null 
+         if [[ $type == "Task" || $type == "NpassTask" ]] ; then 
+             ${SEQ_UTILS_BIN}/task_setup.ksh --dry-run -f \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$   >> $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ 
+         fi
+         " | ssh $mach bash --login  1>/dev/null 
 
 # show results, filter out empty-lines
 if [[ "$o" == "" ]] ; then  
@@ -76,6 +87,6 @@ else
     cat $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ | sed '/^$/d' > $o  
 fi
 
-rm -f $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ $HOME/tmp/name.vars$$ 
+rm -f $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ $HOME/tmp/$name.vars$$ /tmp/nodeinfo.$$ 
 
 
