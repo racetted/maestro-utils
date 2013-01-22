@@ -90,7 +90,7 @@ class T_Chain:
         self.s_exptPath = s_exptPath        
         self.s_exptName = os.path.realpath(s_exptPath).split('/')[-1]
         self.s_currentNodeDir =''     # string: directory of current node
-
+        self.s_currentContainer =''
                                         # list: node-path in expt to sought node
         self.o_tree_List = s_NodePath.split('/')
 	self.o_tree_List=[self.s_exptName]+self.o_tree_List
@@ -129,7 +129,6 @@ class T_Chain:
         # Establish the starting point of the chain
         #
         is_stdout = self.o_dotout.name is sys.stdout.name
-
         #experiment config
         self.__dotCfg(self.o_tree_List[0], "EXPERIMENT", is_stdout )
 
@@ -220,6 +219,7 @@ class T_Chain:
         else: ## container
             self.s_currentNodeDir =  os.path.join(self.s_currentNodeDir, s_cfg)
             s_pathCfg = s_pathCfg + [os.path.join(self.s_exptPath, self.s_currentNodeDir, 'container.cfg')]
+            
         for cfgFile in s_pathCfg:            
             try:
                 o_cfgFile = open(cfgFile, 'r')
@@ -229,6 +229,12 @@ class T_Chain:
 
                 s_input=o_cfgFile.readlines()
                 o_cfgFile.close()
+                if s_nodeType == 'FAMILY' or s_nodeType == 'LOOP' or s_nodeType == 'SWITCH' or s_nodeType == 'MODULE':
+                    self.s_currentContainer=self.s_currentContainer + "/" + s_cfg
+                    self.o_dotout.write("SEQ_CURRENT_CONTAINER=" + self.s_currentContainer + "\n")
+                if s_nodeType == 'MODULE':
+                    self.o_dotout.write("SEQ_CURRENT_MODULE=" + s_cfg + "\n")
+
                 for s_line in s_input:
                     s_line.lstrip()             # Ignore initial white space
                                             ## Keep only non-comment lines

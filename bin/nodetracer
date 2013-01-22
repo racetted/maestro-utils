@@ -66,28 +66,22 @@ if [[ $l != "" ]]; then
    fullnode=`$nodeinfo -n $n -l $l -f node`
    fullnode=`echo $fullnode | cut -d "=" -f2`
    if [[ $fullnode = "" ]]; then
-       echo nodeinfo reported a problem - exitting.
+       echo nodeinfo reported a problem - exiting.
        exit 1
    fi
 else
    fullnode=$n
 fi
 
-# set umask
-umask 002
-
 basedir=${SEQ_EXP_HOME}
-logfile=${SEQ_EXP_HOME}/logs/log_nodetracer
+compress=true
 
 if [ "$type" = "abort" -o "$type" = "success" ]; then
-   dest=$basedir/listings/$TRUE_HOST/$fullnode.$type.gz
+   dest=$basedir/listings/$TRUE_HOST/$fullnode.$type
 else
    echo "type must be success or abort"
    exit 1
 fi
-
-
-echo `date` $fullnode $type $datestamp>> $logfile
 
 #create listing
 dest_leaf="${dest##*/}"
@@ -95,7 +89,17 @@ dest_dir="${dest%/${dest_leaf}}"
 time_dest=${dest}.${datestamp}.`date +%T`
 rm -f $time_dest
 mkdir -p $dest_dir 
-gzip -9 -c $i > $time_dest
+
+#compress listing? 
+if [[ -f $HOME/.maestrorc ]] ; then 
+    compress=`getdef $HOME/.maestrorc` 
+fi 
+
+if [[ "$compress" == "false" ]] ; then 
+    mv $i $time_dest
+else
+    gzip -9 -c $i > $time_dest
+fi
 chmod 664 $time_dest
 
 #create reference to listing
@@ -106,12 +110,11 @@ mkdir -p ${latest_dir}/$nodebranch
 rm -f $latest_dir/${fullnode}.${datestamp}.$type@*
 ln -s $time_dest $latest_dir/$fullnode.${datestamp}.$type@$TRUE_HOST
 
-
 if [[ "$type" != "success" && "$SEQ_ABORT_EMAILS" != "" ]]; then
-  
-  gunzip -c $dest |Mail -s "ABORT: nodename=$fullnode" $SEQ_ABORT_EMAILS
-  #add a sleep of two seconds so that the email can be send
-  sleep 2
+  if [[ "$compress" == "false" ]] ; then 
+      cat  $dest |Mail -s "ABORT: nodename=$fullnode" $SEQ_ABORT_EMAILS
+  else
+      zcat $dest |Mail -s "ABORT: nodename=$fullnode" $SEQ_ABORT_EMAILS
+  fi
 fi
 
-echo `date` $fullnode $type complete >> $logfile

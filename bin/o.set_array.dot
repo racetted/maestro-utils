@@ -1,0 +1,13 @@
+## o.set_array.dot
+#  creates a shell-independant array with name $1, containing the rest of the elements sent.
+
+aRrAy_NaMe=$1
+shift
+if [[ -n $BASH_VERSION ]] ; then 
+#bash shell
+    eval $aRrAy_NaMe='("$@")'
+else
+#ksh based
+    set -A $aRrAy_NaMe -- "$@"
+fi
+unset aRrAy_NaMe || true

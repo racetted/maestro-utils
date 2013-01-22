@@ -7,7 +7,7 @@ eval `cclargs_lite $0 \
   -n        ""                    ""                           "[Node               ]" \
   -l        ""                    ""                           "[Loop arguments     ]" \
   -d        ""                    ""                           "[Datestamp          ]" \
-  -v        ""                    ""                           "[Verbose            ]" \
+  -v        ""                    "1"                          "[Verbose            ]" \
   -m        ""                    ""                           "[Target exec host   ]" \
   -o        ""                    ""                           "[Target file or stdout  ]" \
   -f        "0"                   "1"                          "[Evaluate full config seen at node]"\
@@ -67,24 +67,47 @@ workbase=$(${SEQ_UTILS_BIN}/nodework -n ${SEQ_NODE} -base | cut -d ':' -f 2)
 
 echo "# Logging in to $mach. Stand by..." 
 
-echo "   . $HOME/tmp/$name.vars$$
+echo "   
+         . /etc/profile
+         . $HOME/.profile
+         . $HOME/tmp/$name.vars$$
          export SEQ_WORKBASE=$workbase
          ${SEQ_UTILS_BIN}/chaindot.py -e ${SEQ_EXP_HOME} -n ${SEQ_NODE} -o \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$
-         if [[ $f == "0" ]] ; then 
-             ${SEQ_UTILS_BIN}/runvars -i $config -o $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ -c \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ 
-         else
-             ${SEQ_UTILS_BIN}/runvars -i \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ -o $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ -c \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ 
-         fi
+ 
+      #   if [[ "$u" == "1" ]] ; then 
+      #       if [[ "$f" == "0" ]] ; then 
+      #           ${SEQ_UTILS_BIN}/chaindot.py -e ${SEQ_EXP_HOME} -n `dirname ${SEQ_NODE}` -o \$TMPDIR/before${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$
+      #       .  \$TMPDIR/before${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$  
+      #       fi
+      #       unset SEQ_GETDEF_DISABLED
+      #       set >  \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.beforeset$$  
+      #       env >>  \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.beforeenv$$  
+      #       .  \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$  
+      #       unset SEQ_CURRENT_CONTAINER SEQ_CURRENT_MODULE
+      #       set >  \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.afterset$$  
+      #       env >>  \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.afterenv$$  
+      #       diff  --changed-group-format='%>' --unchanged-group-format='' \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.beforeset$$ \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.afterset$$   >  $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ 
+      #       diff --changed-group-format='%>' --unchanged-group-format='' \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.beforeenv$$ \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.afterenv$$   >> $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ 
+      #   else
+             if [[ "$f" == "0" ]] ; then 
+                 ${SEQ_UTILS_BIN}/runvars -i $config -o $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ -c \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$  
+             else
+                 ${SEQ_UTILS_BIN}/runvars -i \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ -o $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ -c \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$
+             fi
+      #   fi
          if [[ $type == "Task" || $type == "NpassTask" ]] ; then 
-             ${SEQ_UTILS_BIN}/task_setup.ksh --dry-run -f \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$   >> $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ 
+             unset SEQ_GETDEF_DISABLED
+             ${SEQ_UTILS_BIN}/task_setup.ksh --dry-run -f \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ | grep -v '** TASK_SETUP'  >> $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ 
          fi
-         " | ssh $mach bash --login  1>/dev/null 
+             " | ssh $mach  1>/dev/null 
 
 # show results, filter out empty-lines
 if [[ "$o" == "" ]] ; then  
-    cat $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ | sed '/^$/d' 
+   #cat $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ | sed '/^$/d' | grep -v SEQ_GETDEF_DISABLED=1
+   cat $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$  | sed -e '/^$/d' -e 's/\(^[a-zA-Z0-9_]*=\)\(.*\)/\1"\2"/' | grep -v SEQ_GETDEF_DISABLED=1
 else 
-    cat $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ | sed '/^$/d' > $o  
+   #cat $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ | sed '/^$/d' | grep -v SEQ_GETDEF_DISABLED=1 > $o  
+   cat $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$  | sed -e '/^$/d' -e 's/\(^[a-zA-Z0-9_]*=\)\(.*\)/\1"\2"/' | grep -v SEQ_GETDEF_DISABLED=1 > $o
 fi
 
 rm -f $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ $HOME/tmp/$name.vars$$ /tmp/nodeinfo.$$ 

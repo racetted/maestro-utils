@@ -19,7 +19,7 @@ function viewfile
 {
    source_file=$1
    dest_file=$2
-   tmp_file=/tmp/listing_$$.gz
+   tmp_file=/tmp/listing_$$
    found=0
    if [[ ${source_file} != "" ]]; then
      if [[ -e ${source_file} ]] ; then
@@ -31,10 +31,10 @@ function viewfile
      if [[ -e ${tmp_file} ]]; then
 	 found=1
          if [[ $dest_file == "" ]]; then
-            gunzip -c ${tmp_file}
+            zcat ${tmp_file} || cat ${tmp_file}
          else
             echo "Writing listing to ${dest_file}"
-            gunzip -c ${tmp_file} > ${dest_file}
+            zcat ${tmp_file} > ${dest_file} || cat ${tmp_file} > ${dest_file}
          fi 
          rm -f ${tmp_file}
      fi
@@ -141,7 +141,7 @@ if [[ $list -eq 1 ]]; then
    hostlist=$(ls -L ${SEQ_EXP_HOME}/listings | grep -wv latest | sed "s/\//\ /")
    for host in $hostlist ; do
       echo On $host
-      ssh $host ls -alrt ${SEQ_EXP_HOME}/listings/$host/${fullnode}*.${type}.gz.${datestamp}* 2>/dev/null 
+      ssh $host ls -alrt ${SEQ_EXP_HOME}/listings/$host/${fullnode}*.${type}.${datestamp}* 2>/dev/null 
    done
 else 
        latestlink=$(ls -rt1 $latest_dir/$fullnode.${datestamp}.$type@* 2> /dev/null | tail -1)

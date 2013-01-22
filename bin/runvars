@@ -1,4 +1,3 @@
-#!/bin/ksh
 
 
 arguments=$*
@@ -13,5 +12,13 @@ eval `cclargs_lite $0 \
 . $c 
 
 unset SEQ_GETDEF_DISABLED
-while read LINE ; do eval echo $(echo $LINE | sed 's/;/\n/g') ; done < $i > $o  
+#(set -x ; . $i 2>&1 ) 2>/dev/null | sed 's/^\+\+\s*//' | grep -E '^[^\s]=.+' > $o
+#(set -x ; . $i 2>&1 ) 2>/dev/null | sed 's/^\+\+\s*//' > $o
 
+#cat $o
+
+
+ksh -n $i || (echo "Syntax error in input file."; exit 1)
+$SEQ_UTILS_BIN/varsed.py -i $i 1>$TMPDIR/tmpvarsed.$$
+while read LINE ; do eval echo $LINE ; done < $TMPDIR/tmpvarsed.$$ > $o
+rm -f $TMPDIR/tmpvarsed.$$
