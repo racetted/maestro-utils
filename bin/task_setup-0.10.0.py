@@ -314,7 +314,7 @@ class Config(dict):
             self.set = None
             return()
         fd.close()
-        sep = re.compile("'")
+        sep = re.compile(r"(?<!\\)'")
         equal = re.compile("=")
         quote_count = 0
         self.set = {}; concat_line = ''
