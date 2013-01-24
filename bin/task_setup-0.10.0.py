@@ -203,8 +203,8 @@ class Section(list):
                     target_list.append(command.re.sub(elements[i],updated[j],count=1))
             updated = target_list
             if error_message:
-                print "Warning: the embedded command "+self.delimiter_exec+command+self.delimiter_exec+ \
-                      " in the configuration file returned an error: "+error_message       
+                print "Warning: the embedded command "+self.delimiter_exec+command.string+self.delimiter_exec+ \
+                      " in the configuration file returned an error: "+error_message
         return(updated)
 
     def add(self,line,search_path):
@@ -533,7 +533,7 @@ class Config(dict):
                     if (self.verbosity): print "Info: created directory "+directory+" to complete target request"
                 except:
                     print "Error: unable to create "+directory+" to complete target request"
-                    status = self.error
+                    status = self.error                    
         return(status)
 
     def _getTruePath(self,node):
@@ -692,8 +692,7 @@ class Config(dict):
                             warnline = "Warning: STDERR returned from "+entry["target_host"]+" is "+error
                             sys.stderr.write(warnline+'\n')
                             if (self.verbosity): print warnline
-                            status = self.error
-                        elif int(output) == 1:
+                        if int(output) == 1:
                             remote_file_type = 'file'
                         elif int(output) == 2:
                             remote_file_type = 'directory'
@@ -715,7 +714,7 @@ class Config(dict):
                             status = self.error
 
                     # Take care of creating file links or copies
-                    else:
+                    else:                        
                         isfile = True
                         if remote_file_type is not 'file':
                             try:
