@@ -1,0 +1,67 @@
+#!/bin/ksh
+
+# Analyze environment and current path to present user with any reference
+# implementations currently in use.
+
+# Preset formatting
+indent="     "
+refname="Reference implementation name:"
+refpath="Reference path:"
+refmod="Entry module path:"
+refssm="Obtain reference SSM package:"
+
+# Check environment values
+if [[ -n "${MAESTRO_CURRENT_REF}" ]] ; then
+    print "\n-- Loaded in Envrionment --"
+    print "${indent}${refname} ${MAESTRO_MODULE_NAME}"
+    print "${indent}${refpath} ${MAESTRO_CURRENT_REF}"
+    print "${indent}${refmod} ${MAESTRO_MODULE_PATH}"
+    if [[ -n "${MAESTRO_CURRENT_PREFIX}" ]] ; then
+	print "${indent}Reference-specific applications (refer to documentation for details):"
+	for app in $(find ${MAESTRO_CURRENT_REF}/bin -name "${MAESTRO_CURRENT_PREFIX}*" | sort) ; do
+	    docstring=
+	    docfile=${MAESTRO_CURRENT_REF}/etc/$(basename ${app}).txt
+	    if [[ -f ${docfile} ]] ; then
+		docstring=' - '$(cat ${docfile})
+	    fi
+	    print "${indent}${indent}$(basename ${app})${docstring}"
+	done
+    fi
+fi
+
+# Check current directory values
+local_info=.ref_info
+local_ssm=.ref_load
+if [[ -f ${local_info} ]] ; then
+    if [[ -L EntryModule ]] ; then
+	print "\n-- Current Experiment Home --"
+    else
+	print "\n-- Current Suite Home --"
+    fi
+    (
+	. ${local_info}
+	print "${indent}${refname} ${MAESTRO_MODULE_NAME}"
+	print "${indent}${refpath} ${MAESTRO_CURRENT_REF}"
+    )
+    if [[ -f ${local_ssm} ]] ; then
+	print "${indent}${refssm} . ${local_ssm}"
+    fi
+fi
+
+# Check SEQ_EXP_HOME
+if [[ -n "${SEQ_EXP_HOME}" ]] ; then
+    if [[ -f ${SEQ_EXP_HOME}/${local_info} ]] ; then	
+	print "\n-- SEQ_EXP_HOME Experiment --"
+	(
+	    . ${SEQ_EXP_HOME}/${local_info}
+	    print "${indent}${refname} ${MAESTRO_MODULE_NAME}"
+	    print "${indent}${refpath} ${MAESTRO_CURRENT_REF}"
+	)
+	if [[ -f ${SEQ_EXP_HOME}/${local_ssm} ]] ; then
+	    print "${indent}${refssm} . ${SEQ_EXP_HOME}/${local_ssm}"
+	fi
+    fi
+fi
+
+# Final formatting
+print "\n"

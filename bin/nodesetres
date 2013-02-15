@@ -1,0 +1,78 @@
+#!/usr/bin/env python
+import os,sys,optparse,xml,re
+import xml.etree.ElementTree as ET
+
+# Check for a valid environment
+try:
+    seq_exp_home=os.environ["SEQ_EXP_HOME"]
+except KeyError:
+    sys.stderr.write('!!!!!!!!!!!!!!!!!!!!!!!!!!!! APPLICATION ERROR !!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+    sys.stderr.write('SEQ_EXP_HOME is not set ('+os.path.basename(__file__)+')\nProgram exiting with status 1\n')
+    sys.exit(1)
+
+# Parse command line arguments
+usage = "Usage: %prog -n PATH [options] [ATTRIB=VALUE ...]"
+parser=optparse.OptionParser(usage=usage)
+parser.add_option('-n','--node',dest='node',metavar='PATH',default=None,
+                  help='Full path to node in the flow')
+parser.add_option('-o','--outfile',dest='outfile',metavar='NAME',default=None,
+                  help='Direct output to a file other than the node resource file (stdout with --dry-run active)')
+parser.add_option('--tag',dest='tag',metavar='TAG',default='BATCH',
+                  help='XML tag for which to apply attribute changes (default %default)')
+parser.add_option('--dry-run',dest='dryrun',action='store_true',default=False,
+                  help='Do not modify experiment resource file')
+parser.add_option('-v','--verbose',dest='verbose',action='store_true',
+                  default=False,help='Verbose output')
+(options, args)=parser.parse_args()
+
+# Argument and option checks and parsing
+if options.node is None:
+    sys.stderr.write('Node path is a required argument\n\n')
+    parser.print_help()
+    sys.exit(1)
+nodepath=os.path.normpath(os.path.join(seq_exp_home,'resources','./'+options.node+'.xml'))
+sets={}
+for arg in args:
+    (attrib,value) = re.split('=',arg,maxsplit=1)
+    if options.verbose: sys.stdout.write('Will set '+options.tag+' attribute '+attrib+' to '+value+'\n')
+    sets[attrib] = value
+outfile=(options.outfile is None) and nodepath or options.outfile
+
+# Open node resource file
+try:
+    tree=ET.parse(nodepath)
+except IOError:
+    if options.verbose: sys.stdout.write('Not found: initializing a minimal xml tree\n')
+    tree=ET.ElementTree(element=ET.fromstring('<?xml version="1.0"?>\n<NODE_RESOURCES>\n  <BATCH machine="${FRONTEND}"/>\n</NODE_RESOURCES>'))
+except xml.parsers.expat.ExpatError:
+    sys.stderr.write('Error detected in xml formatting of '+nodepath+'\n')
+    sys.exit(1)
+root=tree.getroot()
+
+# Modify or add specified attributes in each matching tag instance
+for element in root.findall(".//"+options.tag):
+    for (attrib,value) in sets.items():
+        if options.verbose: sys.stdout.write('Setting '+attrib+' to '+value+' in '+options.tag+'\n')
+        element.set(attrib,value)
+
+# Generate requested output
+if options.dryrun:
+    if options.verbose: sys.stdout.write('Output will be generated on stdout because of --dry-run\n')
+    fdout=sys.stdout
+else:
+    try:
+        if options.verbose: sys.stdout.write('Opening '+outfile+' to write\n')
+        fdout=open(outfile,'w')
+    except IOError:
+        sys.stderr.write('Unable to open '+outfile+' for writing\n')
+        sys.exit(1)
+try:
+    tree.write(fdout)
+    fdout.write('\n')
+except IOError:
+    sys.stderr.write('Unable to write to '+fdout.name+'\n')
+    sys.exit(1)
+if not fdout.isatty():
+    if options.verbose: sys.stdout.write('Closing '+outfile+'\n')
+    fdout.close
+    

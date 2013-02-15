@@ -44,7 +44,6 @@ fi
 
 # set new date
 printf "\nset new date:${tictac} -s ${newDate}" >> ${logfile}
-${tictac} -s ${newDate}
 
 # create log file
 explogfile=${SEQ_EXP_HOME}/logs/${newDate}_nodelog
@@ -54,17 +53,7 @@ test ! -f ${explogfile} && touch ${explogfile}
 rootNode=$( ${nodeinfo} -f root )
 rootNode=$( echo ${rootNode} | cut -d "=" -f2 )
 
-(
-# verify if new date set
-    set SEQ_DATE NULL; unset SEQ_DATE
-    retrievedDate=$(${tictac} -f '%Y%M%D%H%Min%S')
-    printf "\nretrieve date: ${tictac} -f %%Y%%M%%D%%H%%Min%%S: ${retrievedDate}\n" >> ${logfile}
-    if [[ "${retrievedDate}" != "${newDate}" ]] ; then 
-	printf "\nERROR expbegin: unable to set new datestamp (${tictac} -s ${newDate})" >&2
-	exit 1
-    fi
-
 # start new run
-    ${maestro} -s submit -n ${rootNode} >> ${logfile} 2>&1
-)
+${maestro} -s submit -n ${rootNode} -d ${newDate} >> ${logfile} 2>&1
+
 

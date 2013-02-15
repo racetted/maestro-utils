@@ -21,25 +21,33 @@ function viewfile
    dest_file=$2
    tmp_file=/tmp/listing_$$
    found=0
+   isCompressed=0
+
+   [[ $v == 1 ]] && set -x 
+
    if [[ ${source_file} != "" ]]; then
      if [[ -e ${source_file} ]] ; then
 	 ln -s ${source_file} ${tmp_file}
+         [[ -n `file $(true_path ${source_file}) | grep 'gzip compressed'` ]] && isCompressed=1
      else
 	 host=${source_file##*@}
 	 scp -q $host:$source_file ${tmp_file} 2>/dev/null || scp -q $host:${source_file%%@*} ${tmp_file}
+         [[ -n `file ${tmp_file} | grep 'gzip compressed'` ]] && isCompressed=1
      fi
      if [[ -e ${tmp_file} ]]; then
 	 found=1
          if [[ $dest_file == "" ]]; then
-            zcat ${tmp_file} || cat ${tmp_file}
+            [[ $isCompressed == 1 ]] && gunzip -c ${tmp_file} || cat ${tmp_file}
          else
             echo "Writing listing to ${dest_file}"
-            zcat ${tmp_file} > ${dest_file} || cat ${tmp_file} > ${dest_file}
+            [[ $isCompressed == 1 ]] && gunzip -c ${tmp_file} > ${dest_file} || cat ${tmp_file} > ${dest_file}
          fi 
          rm -f ${tmp_file}
      fi
   fi
-  test $found == 0 && echo $fullnode $type 'listing not available'
+  if [[ ${found} == 0 ]] ; then
+      echo $fullnode $type 'listing not available'
+  fi
 }
 
 Usage="
@@ -77,6 +85,7 @@ eval `cclargs_lite -D "" $0 \
   -l        ""                    ""                           "[Loop argument list ]" \
   -o        ""                    "/tmp/nodelister_$$"         "[Output listing to file    ]" \
   -d        ""                    ""                           "[datestamp value]" \
+  -v        "0"                   "1"                          "[Verbose]" \
   -f        ""                    ""                           "[Listing file full path]" \
   ++ $arguments 2>/dev/null`
 
@@ -89,6 +98,8 @@ if [[ -n "${SEQ_BIN}" ]] ; then
 else
    nodeinfo=$(which nodeinfo)
 fi
+
+[[ $v == 1 ]] && set -x 
 
 if [[ $n == "" && $f == "" ]]; then
     echo "Node or listing file must be defined \n"
@@ -147,4 +158,3 @@ else
        latestlink=$(ls -rt1 $latest_dir/$fullnode.${datestamp}.$type@* 2> /dev/null | tail -1)
        viewfile ${latestlink} $o
 fi
-

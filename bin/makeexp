@@ -1,14 +1,36 @@
 #!/bin/ksh
 
+# Create an experiment from a reference implementation.
+
+# Argument and error checks
+export EXPPATH=${1}
 if [[ -z "${MAESTRO_CURRENT_REF}" ]] ; then
   echo "MAESTRO_CURRENT_REF is not defined: load a Maestro module before continuing"
   exit 1
 fi
-if [[ $(ls -al . | wc -l) -gt 3 ]] ; then
-  echo "Clean the current directory before building your experiment with $0"
+if [[ -z "${EXPPATH}" ]] ; then
+  echo "Usage: $0 EXP_PATH"
   exit 1
 fi
-echo "y" | import_maestro_exp -s ${MAESTRO_CURRENT_REF}/ref -d . -n -c 
+if [[ $(ls -al ${EXPPATH} | wc -l) -gt 3 ]] ; then
+  echo "Clean the target directory before building your experiment with $0"
+  exit 1
+fi
+
+# Import reference experiment
+import_maestro_exp -s ${MAESTRO_CURRENT_REF}/ref -d ${EXPPATH} -n -y
+
+# Inject experiment documentation
+docfile=${EXPPATH}/.ref_info
+echo MAESTRO_CURRENT_REF=${MAESTRO_CURRENT_REF} >${docfile}
+echo MAESTRO_MODULE_NAME=${MAESTRO_MODULE_NAME} >>${docfile}
+echo MAESTRO_MODULE_PATH=${MAESTRO_MODULE_PATH} >>${docfile}
+
+# Inject s.ssmuse.dot command required to acquire reference
+ssmfile=${EXPPATH}/.ref_load
+echo ". s.ssmuse.dot $(dirname ${MAESTRO_CURRENT_REF})" >${ssmfile}
+
+# Run reference post-import hook
 post_hook=${MAESTRO_CURRENT_REF}/bin/makeexp_hook
 if [[ -x ${post_hook} ]] ; then
   ${post_hook}
