@@ -63,7 +63,7 @@ SECTION CLASS
     force           - Force action despite warnings.
 """
 
-__version__ = "0.10.0"
+__version__ = "0.10.1"
 __author__  = "Ron McTaggart-Cowan (ron.mctaggart-cowan@ec.gc.ca)"
 
 #---------
@@ -132,14 +132,15 @@ class Section(list):
         delim_end='}'
         delim = re.compile(delim_start+'(.*?)'+delim_end)
         dollar = re.compile('\$')
-        elements = re.split(self.delimiter_exec+'(.*?)'+self.delimiter_exec,entry)
+        elements = re.split(self.delimiter_exec+'(.*?)'+self.delimiter_exec,entry)          
         for i in range(0,len(elements)):
+            element_orig=elements[i]
             if i%2:
                 # This is an embedded command.  Add delimiters and do not substitute keywords.
                 elements[i] = self.delimiter_exec+elements[i]+self.delimiter_exec
             else:
                 # This is a standard string.  Attempt to replace all keywords.
-                keywords = delim.findall(elements[i])
+                keywords = delim.findall(elements[i])                  
                 for keyword in keywords:
                     if not keyword: continue
                     try:
@@ -165,12 +166,12 @@ class Section(list):
                     except ValueError:
                         host = None
                 if dollar.search(elements[i]):
-                    highlight = dollar.sub(' >>> $ <<< ',elements[i])
-                    elements[i] = dollar.sub(' [INVALID KEYWORD] ',elements[i])
-                    warnline = "Error: keyword syntax should be ${...}, but found an unmatched $ at entry "+highlight
+                    warnline="Error: found a $ character after resolution of "+element_orig+" to "+elements[i]+ \
+                              "\n  The result of keyword resolution cannot contain un-expanded shell variables.  Evaluate the\n"+\
+                              "  string or remove extra quoting / escape characters before the task_setup call to avoid this problem.  "
                     sys.stderr.write(warnline+'\n')
                     if (self.verbosity): print warnline
-        updated = ''.join(elements) 
+        updated = ''.join(elements)          
         return((updated,host))
 
     def _executeEmbedded(self,entry):
