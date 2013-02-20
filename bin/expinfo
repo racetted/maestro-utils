@@ -12,7 +12,7 @@ refssm="Obtain reference SSM package:"
 
 # Check environment values
 if [[ -n "${MAESTRO_CURRENT_REF}" ]] ; then
-    print "\n-- Loaded in Envrionment --"
+    print "\n-- Loaded in Environment --"
     print "${indent}${refname} ${MAESTRO_MODULE_NAME}"
     print "${indent}${refpath} ${MAESTRO_CURRENT_REF}"
     print "${indent}${refmod} ${MAESTRO_MODULE_PATH}"
