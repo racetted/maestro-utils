@@ -30,10 +30,11 @@ def main():
             continue
 
         if remainderString != "":
-           # print("Found remainder string, combining lines:\n" + remainderString + '\n' + "and \n" + s_line)
+            #print("Found remainder string, combining lines:\n" + remainderString + '\n' + "and \n" + s_line)
             s_line=remainderString + s_line + "\n"
+            remainderString="" 
         if s_line != "" and s_line[-1] == '\\' and countSlashesBefore(s_line, len(s_line)-1) % 2 == 0: 
-           # print("Found valid trailing slash, combining lines.") 
+            #print("Found valid trailing slash, combining lines.") 
             remainderString=remainderString+s_line[:-1]
             continue
 
