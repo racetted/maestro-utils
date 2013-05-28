@@ -94,6 +94,7 @@ class T_Chain:
                                         # list: node-path in expt to sought node
         self.o_tree_List = s_NodePath.split('/')
 	self.o_tree_List=[self.s_exptName]+self.o_tree_List
+        self.s_prevModuleName=''
 
         self.s_NodeName = self.o_tree_List[-1]
 
@@ -139,9 +140,9 @@ class T_Chain:
         self.o_tree_List = self.o_tree_List[1:]
 
         #first module config
-
         self.__dotCfg(self.o_tree_List[0], self.o_node.tagName, is_stdout )
                                         # Advance to first node name sought
+        self.s_prevModuleName=self.o_tree_List[0]
         self.o_tree_List = self.o_tree_List[1:]
 
         #
@@ -160,14 +161,25 @@ class T_Chain:
                 if self.o_tree_List[0] == o_child.getAttribute('name'):
                     l_ChildFound=True
 
+                    if  (self.s_prevModuleName != ''):
+                        # Dot the internal module configuration 
+                        self.__dotCfg(self.s_prevModuleName, "MODULE_INTERNALS", is_stdout)
+ 			self.s_prevModuleName=''
+
+                    if  (o_child.tagName == "MODULE"):
+                        self.s_prevModuleName=self.o_tree_List[0]
+                        self.__dotCfg(self.o_tree_List[0],"MODULE_ARGUMENTS",is_stdout)
+
                     # Dot the configuration for this link in the chain
                     self.__dotCfg(self.o_tree_List[0], o_child.tagName, is_stdout)
 
                     # Advance to the node just found
                     self.o_node = o_child
+ 
                     if  (o_child.tagName == "SWITCH"):
                         #advance to resulting node of switch
-                        answer=self.__switchAnswer(o_child.getAttribute('type'))
+                        answer=str(self.__switchAnswer(o_child.getAttribute('type')))
+                        print("Switch found, answer=" + answer)
                         for o_child_answer in self.o_node.childNodes:
                             if o_child_answer.nodeType != Node.ELEMENT_NODE:
                                 continue
@@ -178,7 +190,7 @@ class T_Chain:
                     self.o_tree_List = self.o_tree_List[1:]
                     break
 
-            assert l_ChildFound, "In *.xml the child, "+ self.o_tree_List[0] + \
+            assert l_ChildFound, "In flow.xml the child, "+ self.o_tree_List[0] + \
                                  ", not found below "+ \
                                  self.o_node.getAttribute('name')
 
@@ -200,11 +212,9 @@ class T_Chain:
 
         if l_debug: print "in dotCfg, s_cfg=", s_cfg, "\n", \
                           "           s_nodeType=", s_nodeType
-
+ 
         if (s_nodeType == 'MODULE'):    # If this is a new module
                                         # Reset the config-file path
-            self.__dotCfg(s_cfg,"MODULE_ARGUMENTS",is_stdout)
-            # s_pathCfg=[os.path.join(self.s_exptPath, self.s_currentNodeDir, s_cfg + '.cfg')]
             self.s_currentNodeDir = 'modules'
 
         # Construct the path to the configuration file
@@ -216,25 +226,25 @@ class T_Chain:
             s_pathCfg = [os.path.join(self.s_exptPath, 'experiment.cfg')]
         elif s_nodeType == 'MODULE_ARGUMENTS':
             s_pathCfg = [os.path.join(self.s_exptPath, self.s_currentNodeDir, s_cfg + '.cfg')]
+        elif s_nodeType == 'MODULE_INTERNALS':
+            s_pathCfg = [os.path.join(self.s_exptPath, self.s_currentNodeDir,'internal.var')]
         else: ## container
             self.s_currentNodeDir =  os.path.join(self.s_currentNodeDir, s_cfg)
             s_pathCfg = s_pathCfg + [os.path.join(self.s_exptPath, self.s_currentNodeDir, 'container.cfg')]
             
         for cfgFile in s_pathCfg:            
+            
+            if not is_stdout:
+                self.o_dotout.write('\n## <CONFIG type=\"' + s_nodeType +'\" name=\"' + s_cfg + '\" path=\"'+ cfgFile + '\" > \n')
+            if s_nodeType == 'FAMILY' or s_nodeType == 'LOOP' or s_nodeType == 'SWITCH' or s_nodeType == 'MODULE':
+                self.s_currentContainer=self.s_currentContainer + "/" + s_cfg
+                self.o_dotout.write("SEQ_CURRENT_CONTAINER=" + self.s_currentContainer + "\n")
+            if s_nodeType == 'MODULE':
+                self.o_dotout.write("SEQ_CURRENT_MODULE=" + s_cfg + "\n")
             try:
                 o_cfgFile = open(cfgFile, 'r')
-
-                if not is_stdout:
-                    self.o_dotout.write('\n## <CONFIG type=\"' + s_nodeType +'\" name=\"' + s_cfg + '\" path=\"'+ cfgFile + '\" > \n')
-
                 s_input=o_cfgFile.readlines()
                 o_cfgFile.close()
-                if s_nodeType == 'FAMILY' or s_nodeType == 'LOOP' or s_nodeType == 'SWITCH' or s_nodeType == 'MODULE':
-                    self.s_currentContainer=self.s_currentContainer + "/" + s_cfg
-                    self.o_dotout.write("SEQ_CURRENT_CONTAINER=" + self.s_currentContainer + "\n")
-                if s_nodeType == 'MODULE':
-                    self.o_dotout.write("SEQ_CURRENT_MODULE=" + s_cfg + "\n")
-
                 for s_line in s_input:
                     s_line.lstrip()             # Ignore initial white space
                                             ## Keep only non-comment lines
@@ -242,13 +252,16 @@ class T_Chain:
                         continue
                     self.o_dotout.write(s_line)
                 self.o_dotout.write('\n')
-
-                if not is_stdout:
-                    self.o_dotout.write('\n## </CONFIG type=\"' + s_nodeType +'\" name=\"' + s_cfg + '\" path=\"'+ cfgFile + '\" > \n')
                     
             except IOError:
                 # It appears that this node does not have a cfg file
                 if not is_stdout: self.o_dotout.write("# - - - >> Could not open " + cfgFile + "\n")
+
+            if not is_stdout:
+                self.o_dotout.write('\n## </CONFIG type=\"' + s_nodeType +'\" name=\"' + s_cfg + '\" path=\"'+ cfgFile + '\" > \n')
+
+##            if (s_nodeType == 'MODULE'):    # If this is a module, load privates as well
+##                self.__dotCfg(s_cfg,"MODULE_INTERNALS",is_stdout)
 
         return()
  
@@ -261,7 +274,23 @@ class T_Chain:
             except OSError:
                 print("tictac not found. Please load your maestro ssm package.\n")
                 sys.exit(1)
-            return (out)  
+        if (s_switchType == "day_of_week"):
+            try:
+                proc = subprocess.Popen([os.getenv('SEQ_BIN') + "/tictac","-f","%Y%M%D"], stdout=subprocess.PIPE)
+                yyyymmdd = proc.stdout.read().rstrip('\n')
+                y=int(str(yyyymmdd)[0:4])
+                m=int(str(yyyymmdd)[4:6])
+                d=int(str(yyyymmdd)[6:8])
+            except OSError:
+                print("tictac not found. Please load your maestro ssm package.\n")
+                sys.exit(1)
+
+            # Sakamoto's algorithm for day of week
+            t = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4]
+            y -= m < 3
+            out=(y + y/4 - y/100 + y/400 + t[m-1] + d) % 7
+
+        return (out)  
     
 
 def main():    

@@ -1,7 +1,5 @@
 #!/bin/ksh
-
 arguments=$*
-
 eval `cclargs_lite $0 \
   -n        ""                    ""                           "[Node         ]" \
   -h        ""                    ""                           "[Display help       ]" \
@@ -37,14 +35,27 @@ fi
 
 
 if [[ $listall -eq 1 ]]; then 
-   find ${SEQ_EXP_HOME}/sequencing/jobinfo -type l -exec ls -lrt1 {} \;
+   # find ${SEQ_EXP_HOME}/sequencing/jobinfo -type l -exec ls -lrt1 {} \;
+   cd  ${SEQ_EXP_HOME}/sequencing/jobinfo 
+   find . -type l -exec ls -gort1 {} \;
 elif [[ $list -eq 1 ]]; then
    dir=${SEQ_EXP_HOME}/sequencing/jobinfo$(dirname ${fullnode})
-   ls -lrt1 $dir/* | grep -w $(basename $fullnode)
+   # ls -lrt1 $dir/* | grep -w $(basename $fullnode)
+
+   # cd to the directory and do the ls from there
+   cd ${dir}
+   \ls -gort1 | grep -w $(basename $fullnode)
 else
    dir=${SEQ_EXP_HOME}/sequencing/jobinfo$(dirname ${fullnode})
    if [[ -L  $dir/$job_id ]] ; then
-      cell=$(ls -lrt1 $dir/$job_id | cut -f 11 -d" " )
+      # look for the "->" separator
+      set -A lsResult $(\ls -lrt1 $dir/$job_id)
+      foundArrow=0
+      cell=""
+      for var in ${lsResult[@]}; do
+         [[ "${foundArrow}" == "1" ]] && cell=${var} && break
+         [[ "${var}" == "->" ]] && foundArrow=1
+      done
       echo cell=$cell job_id=$job_id
       rm -f $dir/$job_id
       gmjob $cell delete $job_id
