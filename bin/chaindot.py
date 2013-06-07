@@ -133,9 +133,6 @@ class T_Chain:
         #experiment config
         self.__dotCfg(self.o_tree_List[0], "EXPERIMENT", is_stdout )
 
-        # Disable the getdef utility after experiment.cfg
-        self.o_dotout.write("\nexport SEQ_GETDEF_DISABLED=1\n")
-
         # Advance to first node name sought
         self.o_tree_List = self.o_tree_List[1:]
 

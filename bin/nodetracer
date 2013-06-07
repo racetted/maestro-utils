@@ -92,7 +92,6 @@ mkdir -p $dest_dir
 
 #compress listing? 
 if [[ -f $HOME/.maestrorc ]] ; then 
-    [[ -n $SEQ_GETDEF_DISABLED ]] && unset SEQ_GETDEF_DISABLED
     compress=`getdef $HOME/.maestrorc compress_listing` 2> /dev/null 
 fi 
 

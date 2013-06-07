@@ -1,4 +1,4 @@
-
+#!/bin/ksh
 
 arguments=$*
 
@@ -6,19 +6,22 @@ eval `cclargs_lite $0 \
   -c        ""                    ""                           "[cfg to run         ]" \
   -o        ""                    ""                           "[output results     ]" \
   -i        ""                    ""                           "[input config to eval     ]" \
+  -v        ""                    ""                           "[verbose mode     ]" \
   -h        ""                    ""                           "[Display help       ]" \
   ++ $arguments`                                                                                                                                                                                                                   
 
 . $c 
 
-unset SEQ_GETDEF_DISABLED
 #(set -x ; . $i 2>&1 ) 2>/dev/null | sed 's/^\+\+\s*//' | grep -E '^[^\s]=.+' > $o
 #(set -x ; . $i 2>&1 ) 2>/dev/null | sed 's/^\+\+\s*//' > $o
 
 #cat $o
 
+if [[ $v != "" ]] ; then  
+  set -x
+fi
 
 ksh -n $i || (echo "Syntax error in input file."; exit 1)
 $SEQ_UTILS_BIN/varsed.py -i $i 1>$TMPDIR/tmpvarsed.$$
-while read LINE ; do eval echo $LINE ; done < $TMPDIR/tmpvarsed.$$ > $o
+while read LINE ; do eval echo $LINE ; done < $TMPDIR/tmpvarsed.$$ > $o 2>/dev/null
 rm -f $TMPDIR/tmpvarsed.$$
