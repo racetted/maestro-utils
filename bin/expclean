@@ -1,0 +1,84 @@
+#!/bin/ksh
+
+arguments=$*
+
+eval `cclargs $0 \
+  -e        ""                    ""                           "[Target experiment  ]" \
+  -t        ""                    ""                           "[Real-Time deletion value   ]" \
+  -d        ""                    ""                           "[Datestamp deletion value   ]" \
+  -v        ""                    "1"                          "[Verbose            ]" \
+  -l        ""                    "1"                          "[Delete logs too? ]" \
+  -m        ""                    "$TRUE_HOST"                 "[Machine to delete listings  ]" \
+  -h        ""                    ""                           "[Display help       ]" \
+  ++ $arguments`                                                                                                                                                                                                                   
+
+if [[ $v != "" ]] ; then  
+  set -x
+fi 
+
+if [[ -z $e ]]; then 
+   if [[ -z $SEQ_EXP_HOME ]]; then 
+      echo Error: -e argument or SEQ_EXP_HOME must be defined.
+      exit 1
+   else  
+      e=$SEQ_EXP_HOME
+   fi
+fi
+
+#datestamp deletion
+if [[ -n $d ]]; then  
+    if [[ $d = +([0-9]) ]] ; then 
+      #padding to 14 characters 
+      while [[ $d -lt 9999999999999 ]] ; do 
+           d=$(($d * 10))
+      done 
+    else 
+       echo Error: -d argument must only be numeric.
+       exit 1
+    fi 
+    #clean sequencing: 
+    echo "Cleaning sequencing for date $d" 
+    find $e/sequencing/ -name "*$d*" -print -exec rm -rf {} \; 
+  
+    if [[ "$l" == "1" ]]; then 
+        echo "Cleaning log $e/logs/${d}_nodelog"
+        rm -f $e/logs/${d}_nodelog
+    fi
+ 
+    echo "Cleaning latest listings for date $d" 
+    find $e/listings/latest -name "*$d*" -print -exec rm -f {} \; 
+    
+    if [[ -n $m ]] ; then  
+       echo "Clean listings on machine $m" 
+       ssh $m find $e/listings/$m/ -name "*$d*" -type f -print -exec 'rm -f {} \;' 
+    fi 
+fi
+
+#real time deletion
+if [[ -n $t ]]; then  
+    if [[ "`uname`" != "Linux" ]]; then 
+       echo "Error: -t argument can only be invoked from a Linux platform. Target machine however may be non-Linux." 
+       exit 1
+    fi
+    #clean sequencing: 
+    echo "Cleaning sequencing older than $t day(s)" 
+    find $e/sequencing/status/ -mindepth 1 -maxdepth 1 -type d -mtime +$t -print  -exec rm -rf {} \; 
+    find $e/sequencing/status/depends -mindepth 1 -maxdepth 1 -type d -mtime +$t -print  -exec rm -rf {} \; 
+    find $e/sequencing/status/remote_depends -mindepth 1 -maxdepth 1 -type d -mtime +$t -print -exec rm -rf {} \;  
+    find $e/sequencing/ -mindepth 2 -not -name ".gitignore" -type f -or -type l -mtime +$t -print -exec rm -f {} \; 
+  
+    if [[ "$l" == "1" ]]; then 
+        echo "Cleaning log $e/logs/"
+        find $e/logs/ -maxdepth 1 -not -name ".gitignore" -type f -mtime +$t -print -exec rm -f {} \; 
+    fi
+ 
+    echo "Cleaning latest listings older than $t day(s)" 
+    find $e/listings/latest -type l -mtime +$t -print -exec rm -f {} \; 
+    
+    if [[ -n $m ]] ; then  
+       echo "Clean listings on machine $m older than $t day(s)" 
+       ssh $m find $e/listings/$m/ -type f -mtime +$t -print -exec 'rm -f {} \;' 
+    fi 
+fi
+
+

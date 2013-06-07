@@ -2,7 +2,7 @@
 
 arguments=$*
 
-eval `cclargs_lite $0 \
+eval `cclargs $0 \
   -n        ""                    ""                           "[Node               ]" \
   -base     "0"                   "1"                          "[Return base only   ]" \
   -ext      ""                    ""                           "[Extension          ]" \

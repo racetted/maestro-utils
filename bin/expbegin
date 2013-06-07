@@ -1,7 +1,7 @@
 #!/bin/ksh
 
 arguments=$*
-eval `cclargs_lite $0 \
+eval `cclargs $0 \
   -h        ""                    ""                   "[Display help       ]" \
   -d        ""                    ""                   "[datestamp value]" \
   -debug    "0"                   "1"                  "[debug mode]" \

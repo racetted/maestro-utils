@@ -31,7 +31,7 @@ Nodetracer  \n
 
 arguments=$*
 
-eval `cclargs_lite $0 \
+eval `cclargs $0 \
   -n        ""                    ""                   "[Node         ]" \
   -h        ""                    ""                   "[Display help       ]" \
   -type     "success"             "success"            "[Show latest successful or aborted listing?  ]" \

@@ -1,6 +1,6 @@
 #!/bin/ksh
 arguments=$*
-eval `cclargs_lite $0 \
+eval `cclargs $0 \
   -n        ""                    ""                           "[Node         ]" \
   -h        ""                    ""                           "[Display help       ]" \
   -list     "0"                   "1"                          "[Show available jobs of the node to kill         ]" \

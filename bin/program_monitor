@@ -11,7 +11,7 @@
 this=program_monitor
 arguments=$*
 
-eval `cclargs_lite $0 \
+eval `cclargs $0 \
   -prog     ""                    ""                           "[program to monitor]" \
   -h        ""                    ""                           "[Display help       ]" \
   -logfile  ""                    ""                           "[file for logging]" \
