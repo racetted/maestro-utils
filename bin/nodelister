@@ -152,7 +152,7 @@ if [[ $list -eq 1 ]]; then
    hostlist=$(ls -L ${SEQ_EXP_HOME}/listings | grep -wv latest | sed "s/\//\ /")
    for host in $hostlist ; do
       echo On $host
-      ssh $host ls -alrt ${SEQ_EXP_HOME}/listings/$host/${fullnode}*.${type}.${datestamp}* 2>/dev/null 
+      ping -q -c 1 $host >> /dev/null && ssh $host ls -alrt ${SEQ_EXP_HOME}/listings/$host/${fullnode}*.${type}.${datestamp}* 2>/dev/null || true
    done
 else 
        latestlink=$(ls -rt1 $latest_dir/$fullnode.${datestamp}.$type@* 2> /dev/null | tail -1)
