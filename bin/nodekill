@@ -9,8 +9,14 @@ eval `cclargs $0 \
   -job_id   ""                    ""                           "[Which job_id to kill ]" \
   ++ $arguments`
 
+
 if [ ! -d "${SEQ_EXP_HOME}" ]; then
    echo "nodekill error: Invalid path SEQ_EXP_HOME=$SEQ_EXP_HOME"
+   exit 1
+fi
+
+if [ ! -d "${SEQ_EXP_HOME}/sequencing/jobinfo" ]; then
+   echo "nodekill error: No Such File or Directory $SEQ_EXP_HOME/sequencing/jobinfo"
    exit 1
 fi
 
@@ -32,19 +38,15 @@ else
    fullnode=$n
 fi
 
-
-
 if [[ $listall -eq 1 ]]; then 
    # find ${SEQ_EXP_HOME}/sequencing/jobinfo -type l -exec ls -lrt1 {} \;
-   cd  ${SEQ_EXP_HOME}/sequencing/jobinfo 
-   find . -type l -exec ls -gort1 {} \;
+   cd  ${SEQ_EXP_HOME}/sequencing/jobinfo && find . -type l -exec ls -gort1 {} \; 
 elif [[ $list -eq 1 ]]; then
    dir=${SEQ_EXP_HOME}/sequencing/jobinfo$(dirname ${fullnode})
    # ls -lrt1 $dir/* | grep -w $(basename $fullnode)
 
    # cd to the directory and do the ls from there
-   cd ${dir}
-   \ls -gort1 | grep -w $(basename $fullnode)
+   cd ${dir} && \ls -gort1 | grep -w $(basename $fullnode)
 else
    dir=${SEQ_EXP_HOME}/sequencing/jobinfo$(dirname ${fullnode})
    if [[ -L  $dir/$job_id ]] ; then
