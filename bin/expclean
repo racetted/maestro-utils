@@ -65,7 +65,7 @@ if [[ -n $t ]]; then
     find $e/sequencing/status/ -mindepth 1 -maxdepth 1 -type d -mtime +$t -print  -exec rm -rf {} \; 
     find $e/sequencing/status/depends -mindepth 1 -maxdepth 1 -type d -mtime +$t -print  -exec rm -rf {} \; 
     find $e/sequencing/status/remote_depends -mindepth 1 -maxdepth 1 -type d -mtime +$t -print -exec rm -rf {} \;  
-    find $e/sequencing/ -mindepth 2 -not -name ".gitignore" -type f -or -type l -mtime +$t -print -exec rm -f {} \; 
+    find $e/sequencing/ -mindepth 2 -not -name ".gitignore" \( -type f -or -type l \) -mtime +$t -print -exec rm -f {} \; 
   
     if [[ "$l" == "1" ]]; then 
         echo "Cleaning log $e/logs/"
