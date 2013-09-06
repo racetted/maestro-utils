@@ -671,7 +671,7 @@ class Config(dict):
                         dest_file = os.path.join(dest,os.path.basename(src_file))
                     else:
                         dest_file = dest
-                    dest_path_short = os.path.join(self._map(section),os.path.basename(dest_file))
+                    dest_path_short = os.path.join(section,entry["link"],os.path.basename(dest_file))
                     src_file_prefix = entry["target_host"] and entry["target_host"]+':' or ''
                     true_src_file = self._getTruePath(src_file)
 
