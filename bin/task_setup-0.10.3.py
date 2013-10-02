@@ -230,7 +230,7 @@ class Section(list):
         entry["link"] = link
         entry["target_host"] = target_host
         entry["target_type"] = lastSlash.search(rawLink) and 'directory' or 'file'        
-        entry["target"] = self._executeEmbedded(target)
+        entry["target"] = [str(item).replace("'","") for item in self._executeEmbedded(target)]
         if search_path:
             entry["target"] = [which(target) for target in entry["target"]]
         entry["copy"] = False
