@@ -76,8 +76,8 @@ if [ -n "${TASK_BASEDIR}" ] ; then
     setup_truepath=$(which true_path)
     printf '\tUnable to find true_path in %s ... will use %s\n' ${TASK_BASEDIR} ${setup_truepath}
   fi
-  if [ -d ${TASK_BASEDIR}/bin ] ; then export TASK_BIN=$(${setup_truepath} ${TASK_BASEDIR}/bin) ; fi
-  if [ -d ${TASK_BASEDIR}/work ] ; then export TASK_WORK=$(${setup_truepath} ${TASK_BASEDIR}/work) ; fi
-  if [ -d ${TASK_BASEDIR}/input ] ; then export TASK_INPUT=$(${setup_truepath} ${TASK_BASEDIR}/input) ; fi
-  if [ -d ${TASK_BASEDIR}/output ] ; then export TASK_OUTPUT=$(${setup_truepath} ${TASK_BASEDIR}/output) ; fi
+  if [ -d ${TASK_BASEDIR}/bin ] ; then TASK_BIN=$(${setup_truepath} ${TASK_BASEDIR}/bin); export TASK_BIN ; fi
+  if [ -d ${TASK_BASEDIR}/work ] ; then TASK_WORK=$(${setup_truepath} ${TASK_BASEDIR}/work) ; export TASK_WORK; fi
+  if [ -d ${TASK_BASEDIR}/input ] ; then TASK_INPUT=$(${setup_truepath} ${TASK_BASEDIR}/input) ; export TASK_INPUT; fi
+  if [ -d ${TASK_BASEDIR}/output ] ; then TASK_OUTPUT=$(${setup_truepath} ${TASK_BASEDIR}/output) ; export TASK_OUTPUT; fi
 fi
