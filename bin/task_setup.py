@@ -63,7 +63,7 @@ SECTION CLASS
     force           - Force action despite warnings.
 """
 
-__version__ = "0.11.0"
+__version__ = "0.11.1"
 __author__  = "Ron McTaggart-Cowan (ron.mctaggart-cowan@ec.gc.ca)"
 
 #---------
@@ -231,7 +231,7 @@ class Section(list):
         """Resolve special keywords in the entry"""
         return resolveKeywords(entry,delim_exec=self.delimiter_exec,set=self.set,verbose=self.verbosity,internals=internals)
 
-    def _executeEmbedded(self,entry):
+    def _executeEmbedded(self,entry,internals={}):
         """Execute backtic embedded commands and substitute result"""
         have_subprocess=True
         try:
@@ -243,6 +243,8 @@ class Section(list):
         commands = delim.finditer(entry)
         for command in commands:            
             command_prefix = (self.cfg) and '. '+self.cfg+' >/dev/null 2>&1; ' or ''
+            for var in internals.keys():
+                command_prefix = command_prefix+str(var)+'='+str(internals[var])+'; '                
             if have_subprocess:
                 p = subprocess.Popen(command_prefix+command.group(1),shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
                 error_message = p.stderr.read().rstrip('\n')
@@ -253,7 +255,7 @@ class Section(list):
                 outbuf = stdout.read().rstrip('\n')
                 stdin.close()
                 stdout.close()
-                stderr.close()
+                stderr.close() 
             elements = re.split('\n',outbuf)
             target_list = []
             for j in range(0,len(updated)):
@@ -280,9 +282,10 @@ class Section(list):
         lastSlash = re.compile('/$',re.M)
         noval = re.compile('^\s*[\'\"]*<no\svalue>',re.M)
         for step in self.loop['steps']:
-            link = self._sectionResolveKeywords(lastSlash.sub('',rawLink),internals={self.loop['var']:step})
-            target = self._sectionResolveKeywords(rawTarget,internals={self.loop['var']:step})
-            target_executed = [str(item).replace("'","") for item in self._executeEmbedded(target['string'])]
+            loopInternals={self.loop['var']:step}
+            link = self._sectionResolveKeywords(lastSlash.sub('',rawLink),internals=loopInternals)
+            target = self._sectionResolveKeywords(rawTarget,internals=loopInternals)            
+            target_executed = [str(item).replace("'","") for item in self._executeEmbedded(target['string'],internals=loopInternals)]
             if any ([noval.match(target_string) for target_string in target_executed]):
                 print "Info: will not create link for "+link['string']+" because of special target value '<no value>'"
                 continue

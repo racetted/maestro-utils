@@ -13,7 +13,6 @@ ssm: profile.sh
 	cp -r $(SWDEST)/bin $(SSMPACKAGE); 
 	mkdir -p $(SSMPACKAGE)/.ssm.d;
 	cp -r post-install profile.sh $(SSMPACKAGE)/.ssm.d;
-	ssmprep --basePath $(shell pwd)/$(SSMPACKAGE) -p $(SSMPACKAGE) --editorPath /bin/echo;
 	echo "Package: maestro-utils" > $(SSMPACKAGE)/.ssm.d/control; \
 	echo "Version: ${VERSION}" >> $(SSMPACKAGE)/.ssm.d/control; \
 	echo "Platform: all" >> $(SSMPACKAGE)/.ssm.d/control; \
