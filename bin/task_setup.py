@@ -63,7 +63,7 @@ SECTION CLASS
     force           - Force action despite warnings.
 """
 
-__version__ = "0.11.1"
+__version__ = "0.11.2"
 __author__  = "Ron McTaggart-Cowan (ron.mctaggart-cowan@ec.gc.ca)"
 
 #---------
@@ -286,7 +286,7 @@ class Section(list):
             link = self._sectionResolveKeywords(lastSlash.sub('',rawLink),internals=loopInternals)
             target = self._sectionResolveKeywords(rawTarget,internals=loopInternals)            
             target_executed = [str(item).replace("'","") for item in self._executeEmbedded(target['string'],internals=loopInternals)]
-            if any ([noval.match(target_string) for target_string in target_executed]):
+            if ([True for target_string in target_executed if noval.match(target_string)]):
                 print "Info: will not create link for "+link['string']+" because of special target value '<no value>'"
                 continue
             if step != self.loop['steps'][0] and not (link['contains_internal'] or target['contains_internal']):
