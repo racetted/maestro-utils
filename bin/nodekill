@@ -2,13 +2,16 @@
 arguments=$*
 eval `cclargs $0 \
   -n        ""                    ""                           "[Node         ]" \
+  -d        ""                    ""                           "[Datestamp (Default \$SEQ_DATE)     ]" \
   -h        ""                    ""                           "[Display help       ]" \
+  -v        "0"                   "1"                           "[Verbose mode        ]" \
   -list     "0"                   "1"                          "[Show available jobs of the node to kill         ]" \
   -listall  "0"                   "1"                          "[Show all available jobs of every node to kill         ]" \
   -l        ""                    ""                           "[Loop argument list ]" \
   -job_id   ""                    ""                           "[Which job_id to kill ]" \
   ++ $arguments`
 
+test "${v}" = "1" && set -x
 
 if [ ! -d "${SEQ_EXP_HOME}" ]; then
    echo "nodekill error: Invalid path SEQ_EXP_HOME=$SEQ_EXP_HOME"
@@ -18,6 +21,10 @@ fi
 if [ ! -d "${SEQ_EXP_HOME}/sequencing/jobinfo" ]; then
    echo "nodekill error: No Such File or Directory $SEQ_EXP_HOME/sequencing/jobinfo"
    exit 1
+fi
+
+if [[ "${d}" = "" ]]; then
+   d=$(${SEQ_BIN}/tictac -f %Y%M%D%H%Min%S)
 fi
 
 if [[ -n "${SEQ_BIN}" ]] ; then
@@ -40,7 +47,7 @@ fi
 
 if [[ $listall -eq 1 ]]; then 
    # find ${SEQ_EXP_HOME}/sequencing/jobinfo -type l -exec ls -lrt1 {} \;
-   cd  ${SEQ_EXP_HOME}/sequencing/jobinfo && find . -type l -exec ls -gort1 {} \; 
+   cd  ${SEQ_EXP_HOME}/sequencing/jobinfo && find . -type l -name "$d@*" -exec ls -gort1 {} \; 
 elif [[ $list -eq 1 ]]; then
    dir=${SEQ_EXP_HOME}/sequencing/jobinfo$(dirname ${fullnode})
    # ls -lrt1 $dir/* | grep -w $(basename $fullnode)
@@ -49,9 +56,9 @@ elif [[ $list -eq 1 ]]; then
    cd ${dir} && \ls -gort1 | grep -w $(basename $fullnode)
 else
    dir=${SEQ_EXP_HOME}/sequencing/jobinfo$(dirname ${fullnode})
-   if [[ -L  $dir/$job_id ]] ; then
+   if [[ -L  $dir/$d@$job_id ]] ; then
       # look for the "->" separator
-      set -A lsResult $(\ls -lrt1 $dir/$job_id)
+      set -A lsResult $(\ls -lrt1 $dir/$d@$job_id)
       foundArrow=0
       cell=""
       for var in ${lsResult[@]}; do
@@ -59,10 +66,10 @@ else
          [[ "${var}" == "->" ]] && foundArrow=1
       done
       echo cell=$cell job_id=$job_id
-      rm -f $dir/$job_id
+      rm -f $dir/$d@$job_id
       gmjob $cell delete $job_id
    else 
-      echo "Record of job_id $dir/$job_id no longer available. \n"
+      echo "Record of job_id $dir/$d@$job_id no longer available. \n"
       exit 1
    fi
 fi

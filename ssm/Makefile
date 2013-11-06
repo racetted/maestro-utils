@@ -11,6 +11,7 @@ ssm: profile.sh
 	   mkdir $(SSMPACKAGE); \
 	fi;
 	cp -r $(SWDEST)/bin $(SSMPACKAGE); 
+	cp -r $(SWDEST)/lib $(SSMPACKAGE); 
 	mkdir -p $(SSMPACKAGE)/.ssm.d;
 	cp -r post-install profile.sh $(SSMPACKAGE)/.ssm.d;
 	echo "Package: maestro-utils" > $(SSMPACKAGE)/.ssm.d/control; \
