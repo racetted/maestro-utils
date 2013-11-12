@@ -14,13 +14,7 @@ eval `cclargs $0 \
 
 # Check for required command line args
 if [[ -z "${n}" ]] ; then
-  print "Usage: $(basename $0) NODESUB" >&2
-  print "\n  Example: $(basename $0) -n main/post_assimcycle/prog/forecast/gem/Sortie -ext +0000001896\n" >&2
-  exit 1
-fi
-
-if [[ -z "${ext}" ]] ; then
-  print "Usage: $(basename $0) NODESUB" >&2
+  print "Usage: $(basename $0) -n NODE -ext EXTENSION" >&2
   print "\n  Example: $(basename $0) -n main/post_assimcycle/prog/forecast/gem/Sortie -ext +0000001896\n" >&2
   exit 1
 fi
@@ -29,6 +23,11 @@ fi
 if [[ -z "${SEQ_EXP_HOME}" ]] ; then
   print "Error: SEQ_EXP_HOME must be set" >&2
   exit 1
+fi
+
+# End if no extension is provided
+if [[ -z "${ext}" ]] ; then
+  exit 0
 fi
 
 # Reconstitute the extensions for a node
