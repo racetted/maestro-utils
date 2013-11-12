@@ -1,0 +1,47 @@
+#!/bin/ksh
+
+arguments=$*
+
+eval `cclargs $0 \
+  -n        ""                    ""                           "[Node ]" \
+  -ext      ""                    ""                           "[Extension ]" \
+  -v        "0"                   "1"                          "[Verbose             ]" \
+  -h        ""                    ""                           "[Display help        ]" \
+  ++ $arguments`
+
+
+[[ $v == 1 ]] && set -x 
+
+# Check for required command line args
+if [[ -z "${n}" ]] ; then
+  print "Usage: $(basename $0) NODESUB" >&2
+  print "\n  Example: $(basename $0) -n main/post_assimcycle/prog/forecast/gem/Sortie -ext +0000001896\n" >&2
+  exit 1
+fi
+
+if [[ -z "${ext}" ]] ; then
+  print "Usage: $(basename $0) NODESUB" >&2
+  print "\n  Example: $(basename $0) -n main/post_assimcycle/prog/forecast/gem/Sortie -ext +0000001896\n" >&2
+  exit 1
+fi
+
+# Check for required environment
+if [[ -z "${SEQ_EXP_HOME}" ]] ; then
+  print "Error: SEQ_EXP_HOME must be set" >&2
+  exit 1
+fi
+
+# Reconstitute the extensions for a node
+my_fullnode=${n}.${ext}
+if [[ $(basename ${my_fullnode} | grep '\.' | wc -w) -eq 0 ]] ; then return ; fi
+my_node=${my_fullnode%%.*}
+set -A parent_list $(nodeinfo -n ${my_node} | grep node.loop_parent.name | rev | cut -d '/' -f 1 | rev )
+set -A ext_list $(echo ${my_fullnode##*.} | sed 's/\+/ /g')
+i=0; loop_args=""
+while [[ $i -lt ${#ext_list[*]} ]] ; do
+  if [[ -n ${loop_args} ]] ; then loop_args=${loop_args}"," ; fi
+  if [[ -n "${parent_list[$i]}" ]] ; then key=${parent_list[$i]} ; else key=$(basename ${my_node}) ; fi
+  loop_args=${loop_args}${key}=${ext_list[$i]}
+  i=$((i+1))
+done
+print ${loop_args}
