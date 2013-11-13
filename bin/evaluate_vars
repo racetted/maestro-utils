@@ -55,8 +55,8 @@ name=`echo $n | tr '/' '_'`
 type=$(cat $TMPDIR/nodeinfo.$$ | grep node.type | cut -d "=" -f 2)
 
 ## get config variables
-$SEQ_BIN/nodeinfo -n $n $loops -f var -o $HOME/tmp/$name.vars$$ 1>/dev/null 
-. $HOME/tmp/$name.vars$$
+$SEQ_BIN/nodeinfo -n $n $loops -f var -o $TMPDIR/$name.vars$$ 1>/dev/null 
+. $TMPDIR/$name.vars$$
 
 workbase=$(${SEQ_UTILS_BIN}/nodework -n ${SEQ_NODE} -base | cut -d ':' -f 2)
 
@@ -67,28 +67,25 @@ echo "# Logging in to $mach. Stand by..."
 echo "   
          . /etc/profile
          . $HOME/.profile
-         . $HOME/tmp/$name.vars$$
+         scp $HOST:$TMPDIR/$name.vars$$ \$TMPDIR/$name.vars$$
+         . \$TMPDIR/$name.vars$$
          export SEQ_WORKBASE=$workbase
          ${SEQ_UTILS_BIN}/chaindot.py -e ${SEQ_EXP_HOME} -n ${SEQ_NODE} -o \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$
          if [[ "$f" == "0" ]] ; then 
-             ${SEQ_UTILS_BIN}/runvars -i $config -o $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ -c \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ -v $v 
+             ${SEQ_UTILS_BIN}/runvars -i $config -o \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ -c \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ -v $v 
          else
-             ${SEQ_UTILS_BIN}/runvars -i \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ -o $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ -c \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ -v $v
+             ${SEQ_UTILS_BIN}/runvars -i \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ -o \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ -c \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ -v $v
          fi
          if [[ $type == "Task" || $type == "NpassTask" ]] ; then 
-             ${SEQ_UTILS_BIN}/task_setup.ksh --dry-run -f \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ | grep -v '** TASK_SETUP'  >> $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ 
+             ${SEQ_UTILS_BIN}/task_setup.ksh --dry-run -f \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.chaindot$$ | grep -v '** TASK_SETUP'  >> \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ 
          fi
-             " | ssh $mach  1>/dev/null 
+         scp \$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ $HOST:$TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ 
+             " | ssh $mach 1>/dev/null 
 
 # show results, filter out empty-lines
 if [[ "$o" == "" ]] ; then  
-   #cat $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ | sed '/^$/d' 
-   cat $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$  | sed -e '/^$/d' -e 's/\(^[a-zA-Z0-9_]*=\)\(.*\)/\1"\2"/' 
+   cat $TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$  | sed -e '/^$/d' -e 's/\(^[a-zA-Z0-9_]*=\)\(.*\)/\1"\2"/' 
 else 
-   #cat $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ | sed '/^$/d' > $o  
-   cat $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$  | sed -e '/^$/d' -e 's/\(^[a-zA-Z0-9_]*=\)\(.*\)/\1"\2"/'  > $o
+   cat $TMPDIR/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$  | sed -e '/^$/d' -e 's/\(^[a-zA-Z0-9_]*=\)\(.*\)/\1"\2"/'  > $o
 fi
-
-rm -f $HOME/tmp/${SEQ_NAME}${SEQ_LOOP_EXT}.result$$ $HOME/tmp/$name.vars$$ /tmp/nodeinfo.$$ 
-
 

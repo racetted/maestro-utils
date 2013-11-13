@@ -12,11 +12,6 @@ eval `cclargs_lite $0 \
 
 . $c 
 
-#(set -x ; . $i 2>&1 ) 2>/dev/null | sed 's/^\+\+\s*//' | grep -E '^[^\s]=.+' > $o
-#(set -x ; . $i 2>&1 ) 2>/dev/null | sed 's/^\+\+\s*//' > $o
-
-#cat $o
-
 if [[ $v != "" ]] ; then  
   set -x
 fi
