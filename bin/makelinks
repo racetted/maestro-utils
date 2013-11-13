@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import os,sys,re,shutil
 
 class Hub(dict):
     """Local distribution hub"""
@@ -10,18 +11,11 @@ class Hub(dict):
         self.subs=subs
         self.append=append
 
-# Check for required environment
-import os,sys,re,shutil
+# Set default list of subdirectories for the experiment hub/ here
 try:
     seqExpHome=os.path.normpath(os.environ['SEQ_EXP_HOME'])
 except KeyError:
-    sys.stderr.write('SEQ_EXP_HOME must be set to create links.\n')
-    sys.exit(1)
-if os.path.realpath(os.getcwd()) != os.path.realpath(seqExpHome):
-    sys.stderr.write('Must be in SEQ_EXP_HOME ('+seqExpHome+') to create links.\n')
-    sys.exit(1)
-
-# Set default list of subdirectories for the experiment hub/ here
+    seqExpHome=''
 hub=os.path.join(seqExpHome,'hub')
 try:
     fd=open(os.path.join(hub,".subdirs"),"r")
@@ -64,6 +58,14 @@ if options.dryrun:
         sys.stderr.write('Conflicting options specified:  --dry-run and --force.\n')
         sys.exit(1)
 
+# Check for required environment
+if not seqExpHome:
+    sys.stderr.write('SEQ_EXP_HOME must be set to create links.\n')
+    sys.exit(1)
+if os.path.realpath(os.getcwd()) != os.path.realpath(seqExpHome):
+    sys.stderr.write('Must be in SEQ_EXP_HOME ('+seqExpHome+') to create links.\n')
+    sys.exit(1)
+    
 # Set up hub list
 hubs = [Hub(seqExpHome,'hub',subdirs)]
 if options.listings:
