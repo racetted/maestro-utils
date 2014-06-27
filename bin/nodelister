@@ -10,10 +10,10 @@
 #
 # usage: nodelister -n node [-l loopargs] -type [success,abort] -list  - shows all the possible listings (successful, aborted)
 #        nodelister -h                                         - shows help
-#        nodelister -n node -type [success,abort] -d datestamp - shows the latest available listing (successful, aborted)
-#        nodelister -n node -type [success,abort] -d datestamp -o outfile   - outputs the latest available listing (successful, aborted) to file outfile
-#        nodelister -n node [-l loopargs] -type [success,abort] -d datestamp -list - shows all the possible listings (successful, aborted) for the specified datestamp
-#        nodelister -n node [-l loopargs] -type [success,abort] -d datestamp - shows one specific listing file
+#        nodelister -n node -type [success,abort] [-d datestamp] - shows the latest available listing (successful, aborted)
+#        nodelister -n node -type [success,abort] [-d datestamp] -o outfile   - outputs the latest available listing (successful, aborted) to file outfile
+#        nodelister -n node [-l loopargs] -type [success,abort] [-d datestamp] -list - shows all the possible listings (successful, aborted) for the specified datestamp
+#        nodelister -n node [-l loopargs] -type [success,abort] [-d datestamp] - shows one specific listing file
 
 function viewfile
 {
@@ -55,13 +55,13 @@ Nodelister  \n
 \n
 \t     Shows the latest listing of the node \n
 \n
-\t     Usage: nodelister -n node [-l loopargs] [-type [success,abort]] -d datestamp [-list -o outfile] [-f listfile]\n
+\t     Usage: nodelister -n node [-l loopargs] [-type [success,abort]] [-d datestamp] [-list -o outfile] [-f listfile]\n
 \n
 \t\t        Where: \n
 \t\t\t          node is the full node name. ex: /regional/assimilation/00/gen_cutoff \n
 \t\t\t          loopargs is the comma-separated list of loop arguments. ex. outer_loop=1,inner_loop=2\n
 \t\t\t          type defines whether to get the latest succesfull or aborted listing. Default is success.\n
-\t\t\t          datestamp is the experiment datestamp (YYYYMMDDhhmmss)\n
+\t\t\t          datestamp is the experiment datestamp (YYYYMMDDhhmmss). Default is the latest.\n
 \t\t\t          list shows all possible listings of the node.\n
 \t\t\t          outfile is the output file where the output can be redirected.\n
 \t\t\t\t        listfile is used for viewing specific listing instead of latest (requires full path to listing file)
@@ -118,14 +118,19 @@ if [[ "$f" != "" ]]; then
    exit 0
 fi
 
-if [[ $n != "" ]]; then
-   if [[ $d == "" && ${list} == "0" ]]; then
-    echo "Datestamp must be defined \n"
-    echo $Usage
-    exit 1
-   fi
+#if [[ $n != "" ]]; then
+#   if [[ $d == "" && ${list} == "0" ]]; then
+#    echo "Datestamp must be defined \n"
+#    echo $Usage
+#    exit 1
+#   fi
+#fi
+
+if [[ $d != "" && ${list} == "0" ]]; then
+   datestamp=$d
+else
+   datestamp=`tictac -f %Y%M%D%H%Min%S`
 fi
-datestamp=$d
 
 if [[ $h != "" ]]; then
    echo $Usage
@@ -135,7 +140,7 @@ if [[ $l != "" ]]; then
    fullnode=`$nodeinfo -n $n -l $l -f node`
    fullnode=`echo $fullnode | cut -d "=" -f2`
    if [[ $fullnode = "" ]]; then
-       echo nodeinfo reported a problem - exitting.
+       echo "nodeinfo reported a problem - exitting.\n"
        exit 1
    fi
 else
@@ -156,5 +161,6 @@ if [[ $list -eq 1 ]]; then
    done
 else 
        latestlink=$(ls -rt1 $latest_dir/$fullnode.${datestamp}.$type@* 2> /dev/null | tail -1)
+       [[ -z $latestlink ]] && latestlink=$(ls -rt1 $latest_dir/$fullnode.*.$type@* 2> /dev/null | tail -1)
        viewfile ${latestlink} $o
 fi
