@@ -175,17 +175,35 @@ class T_Chain:
  
                     if  (o_child.tagName == "SWITCH"):
                         #advance to resulting node of switch
+                        switch_item_found = 0;
                         answer=str(self.__switchAnswer(o_child.getAttribute('type')))
                         print("Switch found, answer=" + answer)
                         for o_child_answer in self.o_node.childNodes:
                             if o_child_answer.nodeType != Node.ELEMENT_NODE:
                                 continue
                             if (o_child_answer.getAttribute('name') == answer):
+			        switch_item_found = 1
                                 self.o_node = o_child_answer
- 
+                            #if no exact match, search for switch item within multiple values
+                            else:
+                                tmp_name = o_child_answer.getAttribute('name')
+                                name_list = tmp_name.split(',')
+                                for single_name in name_list:
+				    if single_name == answer:
+				        switch_item_found = 1
+				        self.o_node = o_child_answer
+			#if no match, search for default switch item
+			if switch_item_found == 0:
+			    for o_child_answer in self.o_node.childNodes:
+                                if o_child_answer.nodeType != Node.ELEMENT_NODE:
+                                    continue
+				if (o_child_answer.getAttribute('name') == 'default'):
+				    switch_item_found = 1
+				    self.o_node = o_child_answer
+			        
                     # Advance to the next node name sought
                     self.o_tree_List = self.o_tree_List[1:]
-                    break
+                    break    
 
             assert l_ChildFound, "In flow.xml the child, "+ self.o_tree_List[0] + \
                                  ", not found below "+ \
