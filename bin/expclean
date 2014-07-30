@@ -41,8 +41,9 @@ if [[ -n $d ]]; then
     find $e/sequencing/ -name "*$d*" -print -exec rm -rf {} \; 
   
     if [[ "$l" == "1" ]]; then 
-        echo "Cleaning log $e/logs/${d}_nodelog"
+        echo "Cleaning log $e/logs/${d}_nodelog and ${d}_toplog"
         rm -f $e/logs/${d}_nodelog
+        rm -f $e/logs/${d}_toplog
     fi
  
     echo "Cleaning latest listings for date $d" 
