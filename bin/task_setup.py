@@ -63,7 +63,7 @@ SECTION CLASS
     force           - Force action despite warnings.
 """
 
-__version__ = "0.11.2"
+__version__ = "0.11.3"
 __author__  = "Ron McTaggart-Cowan (ron.mctaggart-cowan@ec.gc.ca)"
 
 #---------
@@ -391,6 +391,8 @@ class Config(dict):
                 try:
                     (key,value) = equal.split(concat_line,maxsplit=1)
                 except ValueError:
+                    if quote_count == 0:
+                        concat_line = ''
                     continue
                 self.set[key] = value.rstrip('\n')
                 concat_line = ''
@@ -768,14 +770,18 @@ class Config(dict):
                             warnline = "Warning: STDERR returned from "+entry["target_host"]+" is "+error
                             sys.stderr.write(warnline+'\n')
                             if (self.verbosity): print warnline
-                        if int(output) == 1:
-                            remote_file_type = 'file'
-                        elif int(output) == 2:
-                            remote_file_type = 'directory'
+                        if len(output) > 0:
+                            if int(output) == 1:
+                               remote_file_type = 'file'
+                            elif int(output) == 2:
+                               remote_file_type = 'directory'
+                            else:
+                                if not link_only:
+                                    print "Error: required file "+true_src_file+" does not exist on host "+entry["target_host"]
+                                    status = self.error
                         else:
-                            if not link_only:
-                                print "Error: required file "+true_src_file+" does not exist on host "+entry["target_host"]
-                                status = self.error
+                            print "Error: unable to login to target host "+entry["target_host"]+". See previous error statement for STDERR details."
+                            status = self.error
 
                     # Take care of creating directory links
                     if os.path.isdir(true_src_file) or remote_file_type is 'directory':
