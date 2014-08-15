@@ -8,6 +8,7 @@ eval `cclargs $0 \
   -i        "0"                   "1"                          "[Ignore case?]" \
   -v        "0"                   "1"                          "[Verbose]" \
   -l        "0"                   "1"                          "[Search listings too (much longer)]" \
+  -f        ""                    ""                           "[Item scan filters]" \
   ++ $arguments`
 
 [[ $v == 1 ]] && set -x 
@@ -27,15 +28,41 @@ fi
 
 [[ "$i" == "1" ]] && ignore=i 
 
+if [[ -z $f || $f == *cfg* ]] ; then
+    echo "cfg"
+fi
+
 for exp in $exps ; do
 
     ! [[ -d  $exp ]] && continue    
     echo "\n --> Scanning under $exp ..."
-    [[ -f  $exp/experiment.cfg ]] && grep -${ignore}H $s $exp/experiment.cfg   
-    [[ -d  $exp/modules/ ]] && find $exp/modules/ -follow -type f -exec grep -${ignore}H $s {} \;  
-    [[ -d  $exp/resources/ ]] && find $exp/resources/ -follow -type f -exec grep -${ignore}H $s {} \;  
-    [[ -d  $exp/bin/ ]] && find $exp/bin/ -follow -type f -exec grep -${ignore}H $s {} \;  
-    if [[ "$l" == "1" ]]; then
+    if [[ -z $f || $f == *cfg* ]] ; then  
+        [[ -f  $exp/experiment.cfg ]] && grep -${ignore}H $s $exp/experiment.cfg
+    fi
+    if [[ -z $f || $f == *module* || $f == *task* || $f == *cfg* ]] ; then  
+        if [[ $f == *task* ]] ; then 
+            [[ -d  $exp/modules/ ]] && find $exp/modules/ -name "*.tsk" -follow -type f -exec grep -${ignore}H $s {} \;  
+        fi 
+        if [[ $f == *cfg* ]] ; then
+            if [[ -d $exp/config/ ]] ; then 
+                [[ -d  $exp/config/ ]] && find $exp/config/ -follow -type f -exec grep -${ignore}H $s {} \;
+            fi  
+            [[ -d  $exp/modules/ ]] && find $exp/modules/ -name "*.cfg" -follow -type f -exec grep -${ignore}H $s {} \;  
+        fi
+        if [[ $f != *cfg* && $f != *task* ]] ; then
+            [[ -d  $exp/modules/ ]] && find $exp/modules/ -follow -type f -exec grep -${ignore}H $s {} \;  
+        fi
+    fi
+    if [[ $f == *log* ]] ; then   
+        [[ -d  $exp/logs/ ]] && find $exp/logs/ -follow -type f -exec grep -${ignore}H $s {} \;  
+    fi
+    if [[ -z $f || $f == *ressource* ]] ; then
+        [[ -d  $exp/resources/ ]] && find $exp/resources/ -follow -type f -exec grep -${ignore}H $s {} \;  
+    fi
+    if [[ -z $f || $f == *bin* ]] ; then
+        [[ -d  $exp/bin/ ]] && find $exp/bin/ -follow -type f -exec grep -${ignore}H $s {} \;  
+    fi
+    if [[ "$l" == "1" || $f == *listing* ]]; then
         for machine in `ls $exp/listings`; do 
             [[ "$machine" == "latest" ]] && continue
             if  ls $exp/listings/$machine/  ; then 
