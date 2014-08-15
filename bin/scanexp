@@ -28,10 +28,6 @@ fi
 
 [[ "$i" == "1" ]] && ignore=i 
 
-if [[ -z $f || $f == *cfg* ]] ; then
-    echo "cfg"
-fi
-
 for exp in $exps ; do
 
     ! [[ -d  $exp ]] && continue    
