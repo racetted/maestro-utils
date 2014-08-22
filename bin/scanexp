@@ -2,7 +2,7 @@
 
 arguments=$*
 eval `cclargs $0 \
-  -e        ""                    "$SEQ_EXP_HOME"              "[Target experiment or suites.xml file]" \
+  -e        ""                    ""                           "[Target experiment or suites.xml file]" \
   -h        ""                    ""                           "[Display help]" \
   -s        ""                    ""                           "[Which string to look for]" \
   -i        "0"                   "1"                          "[Ignore case?]" \
@@ -17,11 +17,14 @@ if [[ -z $s ]]; then
    echo "Error: -s (string to look for) argument must be defined."
    exit 1
 fi
+
+e=${e:-$SEQ_EXP_HOME}
+
 if [[ -z $e ]]; then 
    echo Error: -e argument or SEQ_EXP_HOME must be defined.
    exit 1
 elif [[ -d $e  ]] ; then 
-    exps=$e
+    exps=${e:-$SEQ_EXP_HOME}
 else 
     exps=$(grep "<Exp>" $e | cut -d ">" -f 2 | cut -d "<" -f 1) 
 fi
@@ -61,7 +64,7 @@ for exp in $exps ; do
     if [[ "$l" == "1" || $f == *listing* ]]; then
         for machine in `ls $exp/listings`; do 
             [[ "$machine" == "latest" ]] && continue
-            if  ls $exp/listings/$machine/  ; then 
+            if  [[ -d $exp/listings/$machine/ ]] ; then 
                 #visible local
                 find $exp/listings/$machine/ -type f -exec zgrep -${ignore}H $s {} \;
             else 
