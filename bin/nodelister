@@ -126,10 +126,19 @@ fi
 #   fi
 #fi
 
-if [[ $d != "" && ${list} == "0" ]]; then
+# defaults to latest
+datestamp=`tictac -f %Y%M%D%H%Min%S`
+
+# in any case if the datestamp is provided by the user
+# we'll use it
+if [[ ${d} != "" ]] ; then
    datestamp=$d
-else
-   datestamp=`tictac -f %Y%M%D%H%Min%S`
+fi
+
+# if "list" is used and datestamp not provided
+# we get everything and not only the latest
+if [[ ${list} == "1" && ${d} == "" ]]; then
+   datestamp=""
 fi
 
 if [[ $h != "" ]]; then
