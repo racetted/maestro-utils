@@ -8,7 +8,7 @@ eval `cclargs $0 \
   -i        "0"                   "1"                          "[Ignore case?]" \
   -v        "0"                   "1"                          "[Verbose]" \
   -l        "0"                   "1"                          "[Search listings too (much longer)]" \
-  -f        ""                    ""                           "[Item scan filters]" \
+  -f        ""                    ""                           "[Item scan filters. Ex: cfg (*.cfg in /config,/module and experiment.cfg), res (/resources), module (/module), bin (/bin), log (/logs), task (*.tsk in /modules)]" \
   ++ $arguments`
 
 [[ $v == 1 ]] && set -x 
@@ -55,7 +55,7 @@ for exp in $exps ; do
     if [[ $f == *log* ]] ; then   
         [[ -d  $exp/logs/ ]] && find $exp/logs/ -follow -type f -exec grep -${ignore}H $s {} \;  
     fi
-    if [[ -z $f || $f == *ressource* ]] ; then
+    if [[ -z $f || $f == *res* ]] ; then
         [[ -d  $exp/resources/ ]] && find $exp/resources/ -follow -type f -exec grep -${ignore}H $s {} \;  
     fi
     if [[ -z $f || $f == *bin* ]] ; then
