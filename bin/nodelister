@@ -8,12 +8,12 @@
 #
 # description: shows the latest listing of the node 
 #
-# usage: nodelister -n node [-l loopargs] -type [success,abort] -list  - shows all the possible listings (successful, aborted)
+# usage: nodelister -n node [-l loopargs] -type [success,abort,submission] -list  - shows all the possible listings (successful, aborted, submitted)
 #        nodelister -h                                         - shows help
-#        nodelister -n node -type [success,abort] [-d datestamp] - shows the latest available listing (successful, aborted)
-#        nodelister -n node -type [success,abort] [-d datestamp] -o outfile   - outputs the latest available listing (successful, aborted) to file outfile
-#        nodelister -n node [-l loopargs] -type [success,abort] [-d datestamp] -list - shows all the possible listings (successful, aborted) for the specified datestamp
-#        nodelister -n node [-l loopargs] -type [success,abort] [-d datestamp] - shows one specific listing file
+#        nodelister -n node -type [success,abort,submission] [-d datestamp] - shows the latest available listing (successful, aborted, submitted)
+#        nodelister -n node -type [success,abort,submission] [-d datestamp] -o outfile   - outputs the latest available listing (successful, aborted, submitted) to file outfile
+#        nodelister -n node [-l loopargs] -type [success,abort,submission] [-d datestamp] -list - shows all the possible listings (successful, aborted, submitted) for the specified datestamp
+#        nodelister -n node [-l loopargs] -type [success,abort,submission] [-d datestamp] - shows one specific listing file
 
 function viewfile
 {
@@ -55,12 +55,12 @@ Nodelister  \n
 \n
 \t     Shows the latest listing of the node \n
 \n
-\t     Usage: nodelister -n node [-l loopargs] [-type [success,abort]] [-d datestamp] [-list -o outfile] [-f listfile]\n
+\t     Usage: nodelister -n node [-l loopargs] [-type [success,abort,submission]] [-d datestamp] [-list -o outfile] [-f listfile]\n
 \n
 \t\t        Where: \n
 \t\t\t          node is the full node name. ex: /regional/assimilation/00/gen_cutoff \n
 \t\t\t          loopargs is the comma-separated list of loop arguments. ex. outer_loop=1,inner_loop=2\n
-\t\t\t          type defines whether to get the latest succesfull or aborted listing. Default is success.\n
+\t\t\t          type defines whether to get the latest succesfull, aborted or submitted listing. Default is success.\n
 \t\t\t          datestamp is the experiment datestamp (YYYYMMDDhhmmss). Default is the latest.\n
 \t\t\t          list shows all possible listings of the node.\n
 \t\t\t          outfile is the output file where the output can be redirected.\n
@@ -68,10 +68,10 @@ Nodelister  \n
 \t\t\t          node and listfile arguments are mutually exclusive but at least one must be provided
 \n
 \t     Ex: \n
-\t\t       nodelister -n node [-l loopargs] -type [success,abort] -d datestamp -list        - shows all the possible listings (successful, aborted)\n
+\t\t       nodelister -n node [-l loopargs] -type [success,abort,submission] -d datestamp -list        - shows all the possible listings (successful, aborted)\n
 \t\t       nodelister -h                                                       - shows help\n
-\t\t       nodelister -n node -type [success,abort]                            - shows the latest available listing (successful, aborted)\n
-\t\t       nodelister -n node -type [success,abort] -o outfile                 - outputs the latest available listing (successful, aborted) to file outfile\n
+\t\t       nodelister -n node -type [success,abort,submission]                 - shows the latest available listing (successful, aborted, submitted)\n
+\t\t       nodelister -n node -type [success,abort,submission] -o outfile      - outputs the latest available listing (successful, aborted, submitted) to file outfile\n
 \t\t       nodelister -f listfile -o outfile                                   - outputs the specified listing file to file outfile\n
 \n
 \t     SEQ_EXP_HOME=$SEQ_EXP_HOME\n"
@@ -81,7 +81,7 @@ eval `cclargs_lite -D "" $0 \
   -h        ""                    "1"                          "[Display help       ]" \
   -n        ""                    ""                           "[Node         ]" \
   -list     "0"                   "1"                          "[Show available listings            ]" \
-  -type     "success"             "success"                    "[Show latest successful or aborted listing?  ]" \
+  -type     "success"             "success"                    "[Show latest successful, aborted or submitted listing?  ]" \
   -l        ""                    ""                           "[Loop argument list ]" \
   -o        ""                    "/tmp/nodelister_$$"         "[Output listing to file    ]" \
   -d        ""                    ""                           "[datestamp value]" \
@@ -157,8 +157,8 @@ else
 fi
 latest_dir=${SEQ_EXP_HOME}/listings/latest/
 
-if [ "$type" != "abort" -a "$type" != "success" ]; then
-   echo "type must be success or abort"
+if [ "$type" != "abort" -a "$type" != "success" -a "$type" != "submission" ]; then
+   echo "type must be success, abort or submission"
    exit 1
 fi
 
