@@ -60,7 +60,6 @@ if [[ -n $d ]]; then
                 ssh $machine find $e/listings/$machine/ -name "*$d*" -type f -print -exec 'rm -f {} \;'
              fi
           done
-          
        else
           echo "Clean listings on machine $m" 
           ssh $m find $e/listings/$m/ -name "*$d*" -type f -print -exec 'rm -f {} \;'
@@ -89,9 +88,21 @@ if [[ -n $t ]]; then
     echo "Cleaning latest listings older than $t day(s)" 
     find $e/listings/latest -type l -mtime +$t -print -exec rm -f {} \; 
     
-    if [[ -n $m ]] ; then  
-       echo "Clean listings on machine $m older than $t day(s)" 
-       ssh $m find $e/listings/$m/ -type f -mtime +$t -print -exec 'rm -f {} \;' 
+    if [[ -n $m ]] ; then
+       if [[ $m == "all" ]] ; then
+          echo "Clean listings on all machines older than $t day(s)"
+          for machine_path in $e/listings/*
+          do
+             machine=${machine_path##*/}
+             echo "Current machine: $machine"
+             if [[ $machine != "latest" ]]; then
+                ssh $machine find $e/listings/$machine/ -type f -mtime +$t -print -exec 'rm -f {} \;' 
+             fi
+          done
+       else
+          echo "Clean listings on machine $m older than $t day(s)" 
+          ssh $m find $e/listings/$m/ -type f -mtime +$t -print -exec 'rm -f {} \;' 
+       fi
     fi 
 fi
 
