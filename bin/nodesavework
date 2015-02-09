@@ -1,0 +1,54 @@
+#!/bin/ksh
+
+arguments=$*
+
+eval `cclargs $0 \
+  -n        ""                    ""                           "[Node               ]" \
+  -ext      ""                    ""                           "[Extension          ]" \
+  -d        ""                    ""                           "[Datestamp          ]" \
+  -h        ""                    ""                           "[Display help       ]" \
+  -v        "0"                   "1"                          "[Verbose]" \
+  ++ $arguments`
+
+[[ $v == 1 ]] && set -x 
+
+if [[ -n "${SEQ_BIN}" ]] ; then
+    nodeinfo=${SEQ_BIN}/nodeinfo
+    tictac=${SEQ_BIN}/tictac
+else
+    nodeinfo=$(which nodeinfo)
+    tictac=$(which tictac)
+fi
+
+if [ ! -d "${SEQ_EXP_HOME}" ]; then
+   echo "node_savework error: Invalid path SEQ_EXP_HOME=$SEQ_EXP_HOME"
+   exit 1
+fi
+
+if [[ $n == "" ]] ; then
+   echo "node_savework error: Node must be defined"
+   exit 1
+fi
+    
+mach=$(nodeinfo -n $n | grep node.machine | cut -d "=" -f 2)
+
+if [[ ${d} == 0 ]] ; then
+   datestamp=$(tictac -f %Y%M%D%H%Min%S)
+else
+   datestamp=${d}
+fi
+
+# time stamp 16:30:18_28Jan2015
+timestamp=$(date +"%T_%d%b%Y")
+
+workpath=/${n}${ext}
+sourceFile=${SEQ_EXP_HOME}/hub/${mach}/work/${datestamp}${workpath}
+
+if [[ ! -e ${sourceFile} ]] ; then
+   echo "Work directory not found! ${sourceFile}" 1>&2
+   exit 1
+fi
+
+destFile=${sourceFile}_${timestamp}
+ssh ${mach} "mv ${sourceFile} ${destFile}" 1>&2 
+echo "${destFile} created."
