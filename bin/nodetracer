@@ -100,7 +100,6 @@ if [[ "$compress" == "false" ]] ; then
 else
     gzip -9 -c $i > $time_dest
 fi
-chmod 664 $time_dest
 
 #create reference to listing
 latest_dir=$basedir/listings/latest/
