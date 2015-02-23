@@ -10,7 +10,7 @@ eval `cclargs $0 \
   ++ $arguments`
 
 if [ ! -d "${SEQ_EXP_HOME}" ]; then
-   echo "nodetracer error: Invalid path SEQ_EXP_HOME=$SEQ_EXP_HOME"
+   echo "nodebatch error: Invalid path SEQ_EXP_HOME=$SEQ_EXP_HOME"
    exit 1
 fi
 
