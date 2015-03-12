@@ -32,7 +32,7 @@ fi
     
 mach=$(nodeinfo -n $n | grep node.machine | cut -d "=" -f 2)
 
-if [[ ${d} == 0 ]] ; then
+if [[ -z "${d}" ]] ; then
    datestamp=$(tictac -f %Y%M%D%H%Min%S)
 else
    datestamp=${d}
@@ -43,12 +43,19 @@ timestamp=$(date +"%T_%d%b%Y")
 
 workpath=/${n}${ext}
 sourceFile=${SEQ_EXP_HOME}/hub/${mach}/work/${datestamp}${workpath}
+destFile=${sourceFile}_${timestamp}
 
 if [[ ! -e ${sourceFile} ]] ; then
-   echo "Work directory not found! ${sourceFile}" 1>&2
-   exit 1
+  ssh ${mach} "mv ${sourceFile} ${destFile}" 1>&2 
+  return_status=$?
+else 
+  mv ${sourceFile} ${destFile} 1>&2
+  return_status=$?
 fi
 
-destFile=${sourceFile}_${timestamp}
-ssh ${mach} "mv ${sourceFile} ${destFile}" 1>&2 
-echo "${mach}:${destFile} created."
+if [[ $return_status == 0 ]]; then 
+   echo "${mach}:${destFile} created."
+else
+   echo "Error in creation of ${mach}:${destFile}" 
+   exit 1
+fi 
