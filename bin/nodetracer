@@ -119,6 +119,7 @@ else
         nodelogger -n $n $loopargs -s info -m "nodetracer error: cannot compress $i to $time_dest"
     fi
 fi
+
 chmod 664 $time_dest
 if [[ $? != 0 ]]; then
     nodelogger -n $n $loopargs -s info -m "nodetracer chmod error: cannot change permission of $time_dest"
