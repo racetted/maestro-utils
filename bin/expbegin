@@ -1,13 +1,18 @@
-#!/bin/ksh
+#!/bin/ksh93
 
 arguments=$*
 eval `cclargs $0 \
   -h        ""                    ""                   "[Display help       ]" \
+  -v        ""                    "1"                  "[Verbose            ]" \
   -d        ""                    ""                   "[datestamp value]" \
   -debug    "0"                   "1"                  "[debug mode]" \
   ++ $arguments`
 
-test "${debug}" = "1" && set -x
+test "${debug}" = "1" && echo "Deprecated option -debug, use -v" && set -x
+
+if [[ $v != "" ]] ; then  
+  set -x
+fi
 
 if [ ! -d "${SEQ_EXP_HOME}" ]; then
    echo "expbegin error: Invalid path SEQ_EXP_HOME=$SEQ_EXP_HOME"
@@ -35,11 +40,12 @@ if [[ -n "${SEQ_DATE}" ]] ; then
 fi
 if [[ "${d}" = "" ]]; then
    currentDate=$(${tictac} -f %Y%M%D%H%Min%S)
-
    #  get new date: +24 Hours
-   newDate=$(r.date ${currentDate} +24 | cut -c 1-14)
+   formatted_date="${currentDate:0:4}-${currentDate:4:2}-${currentDate:6:2} ${currentDate:8:2}:${currentDate:10:2}:${currentDate:12:2}"
+   newDate=$(date -d @$(( $(date -d  "$formatted_date" +%s)  + 24 * 60 * 60)) +%Y%m%d%H%M%S) 
 else
-   newDate=$(r.date -V ${d}| cut -c 1-14)
+   ### pad dates to 14 date characters by multiplying by base 10.
+   newDate=`echo "$d*10^(14-${#d})"|bc`
 fi
 
 # set new date
@@ -51,9 +57,7 @@ test ! -f ${explogfile} && touch ${explogfile}
 
 # determine node to submit
 rootNode=$( ${nodeinfo} -f root )
-rootNode=$( echo ${rootNode} | cut -d "=" -f2 )
+rootNode=${rootNode#*=}
 
 # start new run
 ${maestro} -s submit -n ${rootNode} -d ${newDate} >> ${logfile} 2>&1
-
-

@@ -1,4 +1,4 @@
-#!/bin/ksh
+#!/bin/ksh93
 #
 usage='usage: nodehistory -n node [-h,-sdate startdate, -edate enddate, -step hours]'
 
@@ -8,12 +8,17 @@ arguments=$*
 
 eval `cclargs $0 \
   -n        ""                      ""         "[Node         ]" \
+  -v        ""                      "1"        "[Verbose            ]" \
   -h        ""                      ""         "[Display help       ]" \
   -l        ""                      ""         "[Loop argument list ]" \
   -sdate    "0"                     ""         "[Start date             ]" \
   -edate    "99999999999999"        ""         "[End date  ]" \
   -history  ""                      ""         "[Number of hours backwards from edate]" \
   ++ $arguments`
+
+if [[ $v != "" ]] ; then  
+  set -x
+fi 
 
 if [ "${SEQ_EXP_HOME}" == "" ]; then
    echo "ERROR: SEQ_EXP_HOME not defined!\n"
@@ -43,7 +48,7 @@ fi
 
 if [[ $l != "" ]]; then
    fullnode=`$nodeinfo -n $n -l $l -f node`
-   fullnode=`echo $fullnode | cut -d "=" -f2`
+   fullnode=${fullnode#*=} 
    if [[ $fullnode = "" ]]; then
        echo nodeinfo reported a problem - exitting.
        exit 1
@@ -61,17 +66,18 @@ nodeExt=${nodeLeaf##*.}
 nodeLeaf=${nodeLeaf%.*}
 test $nodeExt = $nodeLeaf && nodeExt=""
 
-if [[ $history != "" ]]; then
-    sdate=$(r.date -V $(r.date $edate) -$history | cut -c 1-14)  
-fi
-
 ### pad dates to 14 date characters by multiplying by base 10.
 sdate=`echo "$sdate*10^(14-${#sdate})"|bc`
 edate=`echo "$edate*10^(14-${#edate})"|bc`
 
+if [[ $history != "" ]]; then
+    formatted_date="${edate:0:4}-${edate:4:2}-${edate:6:2} ${edate:8:2}:${edate:10:2}:${edate:12:2}"
+    sdate=$(date -d @$(( $(date -d  "$formatted_date" +%s)  - $history * 60 * 60)) +%Y%m%d%H%M%S) 
+fi
+
 if [[ (${#sdate} > 14) || (${#edate} > 14) ]] ; then
    echo "sdate=$sdate edate=$edate"
-   echo "Arguments too long. Exitting."
+   echo "Arguments too long. Exiting."
    exit 1
 fi
     
@@ -79,17 +85,14 @@ fi
 #echo "nodeContainer : $nodeContainer"
 #echo "nodeLeaf : $nodeLeaf"
 #echo "nodeExt : $nodeExt"
-logFiles=$(ls ${SEQ_EXP_HOME}/logs/*_nodelog)
 
-for logFile in $logFiles
+for logFile in ${SEQ_EXP_HOME}/logs/*_nodelog
 do
-   dateLog=$(basename $logFile |cut -c 1-14) 
+   filename=${logFile##*/}
+   dateLog=${filename%_nodelog} 
    if [[ ( -r $logFile ) ]] ; then
       if [[ ( ("$dateLog" > "$sdate" ) || ( "$dateLog" == "$sdate" ) ) && ( ("$dateLog" < "$edate" ) || ( "$dateLog" == "$edate"  )) ]]; then
-          logLeaf=${logFile##*/}
-          logDate=${logLeaf%_*}
-          # echo "Using log file $logFile"
-          echo "*** Datestamp=$logDate ***"
+          echo "*** Datestamp=$dateLog ***"
           grep "SEQNODE=${nodeContainer}/${nodeLeaf}:" $logFile | grep ":SEQLOOP=${nodeExt}:" |
           # the sed part does the following
           # 1) remove the node part from the output

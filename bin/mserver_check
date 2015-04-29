@@ -1,0 +1,19 @@
+#!/bin/ksh93
+
+#simple script to check the status of the mserver on a given machine, then launch an mserver on a target machine if it is not currently online. 
+arguments=$*
+
+eval `cclargs $0 "[Simple script to check the status of the mserver on a given machine, then launch an mserver on a target machine if it is not currently online.]" \
+  -m        ""                    "$TRUE_HOST"                 "[Machine on which to launch server ]" \
+  -v        ""                    "1"                          "[Verbose            ]" \
+  -h        ""                    ""                           "[Display help       ]" \
+  ++ $arguments` 
+
+
+if [[ $v != "" ]] ; then  
+  set -x
+fi 
+
+ping -q -c 1 $m || exit 1
+[[ $(madmin -i) ]] ||  ssh  $m  -t bash -l -c \"$SEQ_MAESTRO_SHORTCUT\; export SEQ_MAESTRO_SHORTCUT=\'$SEQ_MAESTRO_SHORTCUT\'\; mserver\"  
+
