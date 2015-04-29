@@ -12,8 +12,9 @@ eval `cclargs $0 \
   -h        ""                      ""         "[Display help       ]" \
   -l        ""                      ""         "[Loop argument list ]" \
   -sdate    "0"                     ""         "[Start date             ]" \
-  -edate    "99999999999999"        ""         "[End date  ]" \
+  -edate    "99991231235959"        ""         "[End date  ]" \
   -history  ""                      ""         "[Number of hours backwards from edate]" \
+  -filter   ""                      ""         "[Only read logs matching filter (ex: ??????06 -> day=6, ?????????12 ->hour=12]" \
   ++ $arguments`
 
 if [[ $v != "" ]] ; then  
@@ -81,12 +82,11 @@ if [[ (${#sdate} > 14) || (${#edate} > 14) ]] ; then
    exit 1
 fi
     
-
 #echo "nodeContainer : $nodeContainer"
 #echo "nodeLeaf : $nodeLeaf"
 #echo "nodeExt : $nodeExt"
 
-for logFile in ${SEQ_EXP_HOME}/logs/*_nodelog
+for logFile in ${SEQ_EXP_HOME}/logs/${filter}*_nodelog
 do
    filename=${logFile##*/}
    dateLog=${filename%_nodelog} 
