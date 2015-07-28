@@ -14,7 +14,7 @@ Nodetracer  \n
 \n
 \t     Saves the listing of a node onto its proper position in the experiment \n
 \n
-\t     Usage: nodetracer -n node [-l loopargs] [-type [success,abort,submission]] -i infile -d datestamp\n 
+\t     Usage: nodetracer -n node [-l loopargs] [-type [success,abort,submission]] -i infile -d datestamp \n 
 \n
 \t\t        Where: \n
 \t\t\t          node is the full node name. ex: /regional/assimilation/00/gen_cutoff \n
@@ -38,6 +38,8 @@ eval `cclargs $0 \
   -l        ""                    ""                   "[Loop argument list ]" \
   -i        ""                    ""                   "[Input listing to file    ]" \
   -d        ""                    ""                   "[datestamp value]" \
+  -c        "0"                   "1"                  "[Clean (remove) input file after save]" \
+  -v        "0"                   "1"                  "[Verbose]" \
   ++ $arguments`
 
 if [ ! -d "${SEQ_EXP_HOME}" ]; then
@@ -50,6 +52,8 @@ if [[ -n "${SEQ_BIN}" ]] ; then
 else
    nodeinfo=$(which nodeinfo)
 fi
+
+[[ $v == 1 ]] && set -x 
 
 if [[ $n == "" ]]; then
     echo "Node must be defined"
@@ -73,6 +77,12 @@ else
    fullnode=$n
 fi
 
+if [[ $l != "" ]]; then
+   loopargs="-l $l"
+else
+   loopargs=""
+fi
+
 basedir=${SEQ_EXP_HOME}
 compress=true
 
@@ -88,7 +98,10 @@ dest_leaf="${dest##*/}"
 dest_dir="${dest%/${dest_leaf}}"
 time_dest=${dest}.${datestamp}.`date +%T`
 rm -f $time_dest
-mkdir -p $dest_dir 
+mkdir -p $dest_dir
+if [[ $? != 0 ]]; then
+    nodelogger -n $n $loopargs -s info -m "nodetracer error: cannot create directory $dest_dir"
+fi
 
 #compress listing? 
 if [[ -f $HOME/.maestrorc ]] ; then 
@@ -97,8 +110,14 @@ fi
 
 if [[ "$compress" == "false" ]] ; then
     mv $i $time_dest
+    if [[ $? != 0 ]]; then
+        nodelogger -n $n $loopargs -s info -m "nodetracer error: cannot move $i to $time_dest"
+    fi
 else
     gzip -9 -c $i > $time_dest
+    if [[ $? != 0 ]]; then
+        nodelogger -n $n $loopargs -s info -m "nodetracer error: cannot compress $i to $time_dest"
+    fi
 fi
 
 #create reference to listing
@@ -106,8 +125,16 @@ latest_dir=$basedir/listings/latest/
 nodeleaf="${fullnode##*/}"
 nodebranch="${fullnode%/${nodeleaf}}"
 mkdir -p ${latest_dir}/$nodebranch
+if [[ $? != 0 ]]; then
+    nodelogger -n $n $loopargs -s info -m "nodetracer error: cannot create directory ${latest_dir}/${nodebranch}"
+fi
 rm -f $latest_dir/${fullnode}.${datestamp}.$type@*
 ln -s $time_dest $latest_dir/$fullnode.${datestamp}.$type@$TRUE_HOST
+if [[ $? != 0 ]]; then
+    nodelogger -n $n $loopargs -s info -m "nodetracer error: cannot link ${latest_dir}/${fullnode}.${datestamp}.${type}@${TRUE_HOST} to $time_dest"
+fi
+
+[[ $c == 1 ]] && rm -f $i
 
 if [[ "$type" != "success" && "$type" != "submission" && "$SEQ_ABORT_EMAILS" != "" ]]; then
   echo "To get the abort listing: \n1) Load maestro's ssm package\n2) Run commands:\n\texport SEQ_EXP_HOME=$SEQ_EXP_HOME \n\t$SEQ_UTILS_BIN/nodelister -f $time_dest"  |Mail -s "ABORT: nodename=$fullnode exp=$SEQ_EXP_HOME date=$SEQ_DATE" $SEQ_ABORT_EMAILS

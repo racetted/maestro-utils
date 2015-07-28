@@ -81,7 +81,7 @@ eval `cclargs_lite -D "" $0 \
   -h        ""                    "1"                          "[Display help       ]" \
   -n        ""                    ""                           "[Node         ]" \
   -list     "0"                   "1"                          "[Show available listings            ]" \
-  -type     "success"             "success"                    "[Show latest successful, aborted or submitted listing?  ]" \
+  -type     ""                    ""                           "[Show latest successful, aborted or submitted listing?  ]" \
   -l        ""                    ""                           "[Loop argument list ]" \
   -o        ""                    "/tmp/nodelister_$$"         "[Output listing to file    ]" \
   -d        ""                    ""                           "[datestamp value]" \
@@ -111,6 +111,16 @@ if [[ $n != "" && $f != "" ]]; then
     echo "Node or listing file are mutually exclusive\n"
     echo $Usage
     exit 1
+fi
+
+if [[ ${type} == "" ]]; then
+   if [[ ${list} == "0" ]]; then
+      truetype="success"
+   else
+      truetype="all"
+   fi
+else
+   truetype=${type}
 fi
 
 if [[ "$f" != "" ]]; then
@@ -155,9 +165,10 @@ if [[ $l != "" ]]; then
 else
    fullnode=$n
 fi
+
 latest_dir=${SEQ_EXP_HOME}/listings/latest/
 
-if [ "$type" != "abort" -a "$type" != "success" -a "$type" != "submission" ]; then
+if [[ $truetype != "abort" && $truetype != "success" && $truetype != "submission" && $truetype != "all" ]]; then
    echo "type must be success, abort or submission"
    exit 1
 fi
@@ -166,10 +177,23 @@ if [[ $list -eq 1 ]]; then
    hostlist=$(ls -L ${SEQ_EXP_HOME}/listings | grep -wv latest | sed "s/\//\ /")
    for host in $hostlist ; do
       echo On $host
-      ping -q -c 1 $host >> /dev/null && ssh $host ls -alrt ${SEQ_EXP_HOME}/listings/$host/${fullnode}*.${type}.${datestamp}* 2>/dev/null || true
+      ls -d ${SEQ_EXP_HOME}/listings/$host/ 1>/dev/null 2>&1
+      if [[ $? == "0" ]]; then
+         if [[ ${truetype} != "all" ]]; then
+            ls -alrt ${SEQ_EXP_HOME}/listings/$host/${fullnode}*.${truetype}.${datestamp}* 2>/dev/null || true
+         else
+            ls -alrt ${SEQ_EXP_HOME}/listings/$host/${fullnode}*.*.${datestamp}* 2>/dev/null || true
+         fi
+      else
+         if [[ ${truetype} != "all" ]]; then
+            ping -q -c 1 $host >> /dev/null && ssh $host ls -alrt ${SEQ_EXP_HOME}/listings/$host/${fullnode}*.${truetype}.${datestamp}* 2>/dev/null || true
+         else
+            ping -q -c 1 $host >> /dev/null && ssh $host ls -alrt ${SEQ_EXP_HOME}/listings/$host/${fullnode}*.*.${datestamp}* 2>/dev/null || true
+         fi
+      fi
    done
 else 
-       latestlink=$(ls -rt1 $latest_dir/$fullnode.${datestamp}.$type@* 2> /dev/null | tail -1)
-       [[ -z $latestlink ]] && latestlink=$(ls -rt1 $latest_dir/$fullnode.*.$type@* 2> /dev/null | tail -1)
+       latestlink=$(ls -rt1 $latest_dir/$fullnode.${datestamp}.$truetype@* 2> /dev/null | tail -1)
+       [[ -z $latestlink ]] && latestlink=$(ls -rt1 $latest_dir/$fullnode.*.$truetype@* 2> /dev/null | tail -1)
        viewfile ${latestlink} $o
 fi

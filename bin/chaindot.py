@@ -72,6 +72,7 @@ unified sequencer."""
 
 from xml.dom              import expatbuilder
 from xml.dom              import Node
+from xml.dom.minidom      import parse
 import os
 import sys
 import optparse
@@ -93,7 +94,7 @@ class T_Chain:
         self.s_currentContainer =''
                                         # list: node-path in expt to sought node
         self.o_tree_List = s_NodePath.split('/')
-	self.o_tree_List=[self.s_exptName]+self.o_tree_List
+        self.o_tree_List=[self.s_exptName]+self.o_tree_List
         self.s_prevModuleName=''
 
         self.s_NodeName = self.o_tree_List[-1]
@@ -102,16 +103,14 @@ class T_Chain:
         if l_debug: print 's_NodePath=', s_NodePath
 
         #
-        # Read the flow.xml
+        # Recursively read the flow.xml file for each module of the tree
         #
-        s_xmlFileName = s_exptPath + '/flow.xml'
-        o_xmlFile = file(s_xmlFileName)
+        entryXmlFile = s_exptPath + '/EntryModule/flow.xml'
+        o_xmlDocument = self.recursiveParseXml(entryXmlFile)
 
                                         # Read the flow.xml
                                         # (This permits identifying the modules)
-        self.o_node = expatbuilder.parse(o_xmlFile).documentElement
-        o_xmlFile.close()
-
+        self.o_node = o_xmlDocument.documentElement
 
         #
         # Open the output file, to be dotted by the client
@@ -122,7 +121,33 @@ class T_Chain:
         except IOError:
             sys.stderr.write("Error: unable to open "+s_outFileName+" for writing\n")
             sys.exit(1)
+    
+    def recursiveParseXml(self, xmlFileName):
+        #open the new xml 
+        currentDocumentXml = parse(xmlFileName)
+        if l_debug: print "recursiveParseXml: currentDocumentXml's headnode is " + currentDocumentXml.documentElement.getAttribute("name") 
+        #checks for module tags to load the subjacent flow files
+        for moduleIterator in currentDocumentXml.getElementsByTagName("MODULE"):
 
+            if l_debug: print "recursiveParseXml: At for loop, moduleIterator=" + moduleIterator.getAttribute("name")
+            # check if the iterator is at the current top node (which we won't need to do anything with)
+            if moduleIterator != currentDocumentXml.documentElement:
+   
+                #filename of the module's xml file to recursively open
+                newXmlFileName = self.s_exptPath + '/modules/' + moduleIterator.getAttribute("name")+'/flow.xml'
+                childDocumentXml = self.recursiveParseXml(newXmlFileName)
+                #put the child's flow inside the insertion point 
+                if l_debug: print "recursiveParseXml: Replacing "+ moduleIterator.getAttribute("name")+ " with "+childDocumentXml.documentElement.getAttribute("name")  
+                if l_debug: print "recursiveParseXml: Renaming "+ childDocumentXml.documentElement.getAttribute("name") + " to " +   moduleIterator.getAttribute("name") + " in child module." 
+                childDocumentXml.documentElement.setAttribute("name", moduleIterator.getAttribute("name"))
+                #grab the child's headnode and import it in the current document
+                nodesToAppend = currentDocumentXml.importNode(childDocumentXml.documentElement, True)
+                #and replace the current module's node with the child's  
+                moduleIterator.parentNode.insertBefore(nodesToAppend,moduleIterator)
+                moduleIterator.parentNode.removeChild(moduleIterator)
+
+        return currentDocumentXml
+    
     def DotTheChain(self):
         """To the *.dot file, write the necessary shell commands to set the
         variables."""    
