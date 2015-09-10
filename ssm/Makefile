@@ -9,9 +9,13 @@ ssm: profile.sh
 	echo "Creating SSM package $(SSMPACKAGE)..."
 	if [ ! -d $(SSMPACKAGE) ]; then \
 	   mkdir $(SSMPACKAGE); \
+	   mkdir $(SSMPACKAGE)/ssm; \
 	fi;
-	cp -r $(SWDEST)/bin $(SSMPACKAGE); 
-	cp -r $(SWDEST)/lib $(SSMPACKAGE); 
+	cp -r $(SWDEST)/bin $(SSMPACKAGE);
+	cp -r $(SWDEST)/lib $(SSMPACKAGE);
+	cp ../Makefile $(SSMPACKAGE);
+	cp ../LICENSE.txt $(SSMPACKAGE);
+	cp Makefile $(SSMPACKAGE)/ssm;
 	mkdir -p $(SSMPACKAGE)/.ssm.d;
 	cp -r post-install profile.sh $(SSMPACKAGE)/.ssm.d;
 	echo "Package: maestro-utils" > $(SSMPACKAGE)/.ssm.d/control; \

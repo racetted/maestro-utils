@@ -1,5 +1,25 @@
 #!/usr/bin/env python
 
+#/* Part of the Maestro sequencer software package.
+# * Copyright (C) 2011-2015  Canadian Meteorological Centre
+# *                          Environment Canada
+# *
+# * Maestro is free software; you can redistribute it and/or
+# * modify it under the terms of the GNU Lesser General Public
+# * License as published by the Free Software Foundation,
+# * version 2.1 of the License.
+# *
+# * Maestro is distributed in the hope that it will be useful,
+# * but WITHOUT ANY WARRANTY; without even the implied warranty of
+# * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# * Lesser General Public License for more details.
+# *
+# * You should have received a copy of the GNU Lesser General Public
+# * License along with this library; if not, write to the
+# * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# * Boston, MA 02111-1307, USA.
+# */
+
 #-------------------------------------------------------------------
 # task_setup.py
 #
@@ -40,7 +60,7 @@ CONFIG CLASS
     taskname   - Task name.
     subdir_sectionMap - Name mapping from configuration file sections to
          task subdirectories.
-    verbosity  - Boolean to produce verbose output.
+    verbosity  - Integer to control verbosity level.
     cleanup    - Boolean to clean task directory before setup.
     force      - Boolean to force actions despite warnings.
     error      - Error code for return.
@@ -57,13 +77,14 @@ SECTION CLASS
          will be appended to any existing additions made to the instance.
 
   CLASS VARIABLES
-    delimiter_exec  - Delimiter for embedded commands (default '`')
-    verbosity       - Boolean to produce verbose output.
-    cleanup         - Boolean to clean task directory before setup.
-    force           - Force action despite warnings.
+    delimiter_exec   - Delimiter for embedded commands (default '`')
+    delimiter_target - Delimiter for multiple targets on the RHS (default \s or \n)
+    verbosity        - Integer to control verbosity level.
+    cleanup          - Boolean to clean task directory before setup.
+    force            - Force action despite warnings.
 """
 
-__version__ = "0.11.3"
+__version__ = "0.14.1"
 __author__  = "Ron McTaggart-Cowan (ron.mctaggart-cowan@ec.gc.ca)"
 
 #---------
@@ -78,6 +99,7 @@ import tempfile
 import types
 import shlex
 import copy
+from time import time
 
 class Store(object):
     """Space for saving values using a callable object"""
@@ -97,7 +119,7 @@ def mkdir_p(path):
         if value == errno.EEXIST:
             pass
         else:
-            sys.stderr.write('task_setup.py::os.makdeirs() returned the following error information on an attempt to create ' \
+            sys.stderr.write('task_setup.py::os.makedirs() returned the following error information on an attempt to create ' \
                              +path+': '+str(sys.exc_info())+"\n")
             raise
 
@@ -171,14 +193,6 @@ def resolveKeywords(entry,delim_exec='',set=None,verbose=False,internals={}):
                     this_keyword = internals[keyword]
                     found_internal = True
                 elements[i] = re.sub(delim_start+keyword+delim_end,this_keyword,elements[i])
-            # Check the first entry for a host name
-            if i == 0:                
-                try:
-                    (host,path) = re.split(':',elements[i])
-                    host_noquote = re.sub('[\'\"]','',host)                    
-                    elements[i] = path
-                except ValueError:
-                    host_noquote = None
             # Check for leftover $ symbols and generate error message
             if dollar.search(elements[i]):    
                 warnline="Error: found a $ character after resolution of "+element_orig+" to "+elements[i]+ \
@@ -186,15 +200,151 @@ def resolveKeywords(entry,delim_exec='',set=None,verbose=False,internals={}):
                           "  string or remove extra quoting / escape characters before the task_setup call to avoid this problem.  "
                 sys.stderr.write(warnline+'\n')
                 if (verbose): print warnline
-    updated = ''.join(elements)          
-    return({'string':updated,'host':host_noquote,'contains_internal':found_internal})
+    updated = ''.join(elements)
+    return({'string':updated,'contains_internal':found_internal})
+
+def getTruePath(node,verbosity):
+    """Get the true path of a file/directory"""
+    have_subprocess=True
+    if (int(verbosity) >= 2): startTime=time()
+    try:
+        import subprocess
+    except ImportError:
+        have_subprocess=False            
+    try:
+        get_true_path = "true_path "+node
+        if have_subprocess:
+            p = subprocess.Popen(get_true_path,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+            true_src = p.stdout.read()                
+        else:
+            (stdin,stdout_stderr) = os.popen4(get_true_path,'r')
+            true_src = stdout_stderr.read()
+            stdin.close()
+            stdout_stderr.close()
+        if true_src == '(null)' or not true_src or re.search('No such file or directory$',true_src,re.M) or \
+                re.search('Probleme avec le path',true_src):
+            true_src = node
+    except OSError:
+        if (os.path.exists(node)):
+            print "Warning: true_path does not exist or returned an error for "+src_file
+        true_src = node
+    if (int(verbosity) >= 2): print("Info 2: getTruePath exec time: " + str( time() - startTime))
+    return(true_src)
+
+class LinkFile():
+    """Structure for link file target information"""
+
+    def __init__(self,link,target_host,target,link_only,verbosity=False):
+        """Class constructor"""
+        self.have_subprocess=True
+        try:
+            import subprocess
+        except ImportError:
+            self.have_subprocess=False      
+        self.link = link
+        self.target_host = target_host
+        self.target = target
+        self.link_only = link_only
+        self.verbosity = verbosity
+        self.src = []
+        self.host = []
+        self._expandTarget()
+        self._trueSources()
+        self._setPrefixes()
+        self._sourceTypes()
+
+    def _expandTarget(self):
+        """Complete target information through local or remote wildcard expansion"""
+        import glob      
+        for i in range(0,len(self.target)):
+            src_expanded = []
+            try:
+                hostname = self.target_host[i]
+            except TypeError:
+                hostname = None
+            src_expanded = glob.glob(self.target[i])            
+            if len(src_expanded) < 1 and hostname:
+                file_sep = '?'
+                file_list = "ssh "+hostname+" \"python -c 'import glob; f=glob.glob(\\\""+self.target[i]+"\\\"); print(\\\""+file_sep+"\\\".join(f))'\""
+                if self.have_subprocess:
+                    import subprocess
+                    p = subprocess.Popen(file_list,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                    output = p.stdout.read()
+                    error = p.stderr.read()
+                else:
+                    (stdin,stdout,stderr) = os.popen3(file_list,'r')
+                    output = stdout.read()
+                    error = stderr.read()                            
+                src_expanded = [fname.rstrip('\n') for fname in re.split('\\'+file_sep,output.rstrip('\n')) if fname]
+            if len(src_expanded) < 1:
+                src_expanded = [self.target[i]]                      
+            self.src.extend(src_expanded)
+            self.host.extend([hostname for item in src_expanded])
+
+    def _trueSources(self):
+        """Get true source paths for entries"""
+        self.true_src_file = [getTruePath(src_file,self.verbosity) for src_file in self.src]
+
+    def _setPrefixes(self):
+        """Set hosts and prefixes for entries"""
+        self.src_file_prefix = [target_host and target_host+':' or '' for target_host in self.host]
+
+    def _sourceTypes(self):
+        """Determine the type of source"""
+        self.remote_file_type = ['' for src in self.true_src_file]
+        for host in set(self.host):
+            if not host: continue
+            idx = []
+            for i in range(0,len(self.true_src_file)):                
+                if self.host[i] == host:
+                    idx.append(i)
+            check_file = "ssh "+host+" '"
+            for i in idx:
+                check_file += ' if [[ -d "'+self.true_src_file[i]+ \
+                    '" ]] ; then echo 2 ; elif [[ -f "'+self.true_src_file[i]+ \
+                    '" ]] ; then echo 1 ; else echo 0 ; fi;'
+            check_file.rstrip(';')
+            check_file += "'"
+            if self.have_subprocess:
+                import subprocess
+                p = subprocess.Popen(check_file,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+                output = p.stdout.read().rstrip('\n')
+                error = p.stderr.read()
+            else:
+                (stdin,stdout,stderr) = os.popen3(check_file,'r')
+                output = stdout.read().rstrip('\n')
+                error = stderr.read()
+            if len(error) > 0:
+                warnline = "Warning: STDERR returned from "+self.host[i]+" is "+error
+                sys.stderr.write(warnline+'\n')
+                if (self.verbosity): print warnline                    
+            if len(output) > 0:
+                output_list = output.split('\n')
+                for i in range(0,len(idx)):
+                    try:
+                        ftype = int(output_list[i])
+                    except:
+                        if not self.link_only:
+                            print "Warning: required file "+self.true_src_file[i]+" does not exist on host "+self.host[i]
+                    if ftype == 1:
+                        self.remote_file_type[idx[i]] = 'file'
+                    elif ftype == 2:
+                        self.remote_file_type[idx[i]] = 'directory'
+            else:
+                print "Warning: unable to login to target host "+self.host[i]+". See previous error statement for STDERR details."
+
+    def rephost(self):
+        """Repeat host entry for all targets"""
+        self.src.extend(self.target)
+        self.host.extend([self.target_host[0] for item in self.target])
 
 class Section(list):
     """Data and functions applicable to individual configuration sections"""
 
     # Class variables
     delimiter_exec = '`'
-    verbosity = False
+    delimiter_target = '(?<!<no)\n|\s+(?!value>)'
+    verbosity = 0
     cleanup = False
     force = False
 
@@ -227,6 +377,20 @@ class Section(list):
         """Determine whether this section is of a specific type"""
         return(self.attrib.has_key('type') and self.attrib['type'] or None)
 
+    def _splitHost(self,entry):
+        """Split a set of strings into host:path form"""
+        hostpath = {'host':[],'path':[]}
+        for item in entry:            
+            try:
+                (host,path) = re.split(':',item)
+                host_noquote = re.sub('[\'\"]','',host)                    
+            except ValueError:
+                path = item
+                host_noquote = None
+            hostpath['host'].append(host_noquote)
+            hostpath['path'].append(path)
+        return(hostpath)
+                
     def _sectionResolveKeywords(self,entry,internals=None):
         """Resolve special keywords in the entry"""
         return resolveKeywords(entry,delim_exec=self.delimiter_exec,set=self.set,verbose=self.verbosity,internals=internals)
@@ -255,8 +419,8 @@ class Section(list):
                 outbuf = stdout.read().rstrip('\n')
                 stdin.close()
                 stdout.close()
-                stderr.close() 
-            elements = re.split('\n',outbuf)
+                stderr.close()                
+            elements = re.split(self.delimiter_target,outbuf)
             target_list = []
             for j in range(0,len(updated)):
                 for i in range(0,len(elements)):
@@ -273,7 +437,7 @@ class Section(list):
         entry = {}
         try:
             rawLink = data[1]
-            rawTarget = ' '.join(data[2:]).rstrip()
+            rawTarget = ' '.join(data[2:]).rstrip()            
         except IndexError:
             warnline = "Warning: ignoring malformed configuration line: "+line
             sys.stderr.write(warnline)
@@ -281,21 +445,34 @@ class Section(list):
             return(False)
         lastSlash = re.compile('/$',re.M)
         noval = re.compile('^\s*[\'\"]*<no\svalue>',re.M)
+        comment = re.compile('^#',re.M)
         for step in self.loop['steps']:
             loopInternals={self.loop['var']:step}
             link = self._sectionResolveKeywords(lastSlash.sub('',rawLink),internals=loopInternals)
-            target = self._sectionResolveKeywords(rawTarget,internals=loopInternals)            
-            target_executed = [str(item).replace("'","") for item in self._executeEmbedded(target['string'],internals=loopInternals)]
-            if ([True for target_string in target_executed if noval.match(target_string)]):
-                print "Info: will not create link for "+link['string']+" because of special target value '<no value>'"
-                continue
+            link_split = self._splitHost([link['string']])
+            entry["link_host"] = link_split["host"][0]
+            entry["link"] = link_split["path"][0]
+            target = self._sectionResolveKeywords(rawTarget,internals=loopInternals)
+            target_executed = [str(item).replace("'","").rstrip() for item in self._executeEmbedded(target['string'],internals=loopInternals)]
+            target_list = re.split(self.delimiter_target,' '.join(target_executed))
+            target_split = self._splitHost(target_list)
+            if ([True for target_string in target_split["path"] if noval.match(target_string)]):
+                if any([True for target_string in target_split["path"] if not noval.match(target_string)]):
+                    print "Info 1: some entries for "+link['string']+" will not be added because of special target value '<no value>'"
+                else:
+                    print "Info 1: will not create link for "+link['string']+" because of special target value '<no value>'"
+                    continue
             if step != self.loop['steps'][0] and not (link['contains_internal'] or target['contains_internal']):
                 continue
-            entry["link_host"] = link['host']
-            entry["link"] = link['string']
-            entry["target_host"] = target['host']
-            entry["target_type"] = lastSlash.search(rawLink) and 'directory' or 'file'        
-            entry["target"] = target_executed
+            entry["target"] = []
+            entry["target_host"] = []
+            for i in range(0,len(target_split["path"])):
+                if comment.match(target_split["path"][i]):
+                    break
+                if not noval.match(target_split["path"][i]):                    
+                    entry["target_host"].append(target_split["host"][i])
+                    entry["target"].append(target_split["path"][i])
+            entry["target_type"] = (lastSlash.search(rawLink) or len(entry["target"]) > 1) and 'directory' or 'file'        
             if search_path:
                 entry["target"] = [which(target) for target in entry["target"]]
             entry["copy"] = False
@@ -316,7 +493,7 @@ class Config(dict):
     taskdir = None
     basepath = None
     taskname = None
-    verbosity = False
+    verbosity = 0
     cleanup = False
     force = False
     error = 0
@@ -430,7 +607,7 @@ class Config(dict):
         """Set up the requested subdirectory for the task"""
         status = self.ok
         if not os.path.isdir(subdir):
-            if (self.verbosity): print "Info: creating subdirectory "+subdir
+            if (self.verbosity): print "Info 1: creating subdirectory "+subdir
             try:
                 mkdir_p(subdir)
             except OSError:
@@ -488,7 +665,7 @@ class Config(dict):
             print "Error: task directory "+self.taskdir+" is not writeable ... exiting"
             return(self.error)
         # Set task name and working path (needs to exist for `true_path` so it can't be done during construction)
-        basedir = self._getTruePath(self.taskdir)
+        basedir = getTruePath(self.taskdir,self.verbosity)
         self.basepath = os.path.dirname(basedir)
         self.taskname = os.path.basename(basedir)
         return(status)
@@ -507,7 +684,7 @@ class Config(dict):
         self._append_meta("setup",{"link":"task_setup",
                                    "target":[sys.argv[0]],
                                    "target_type":'file',
-                                   "target_host":None,
+                                   "target_host":[None],
                                    "copy":False,
                                    "cleanup":False,
                                    "create_target":False,
@@ -517,7 +694,7 @@ class Config(dict):
             self._append_meta("setup",{"link":"task_setup.cfg",
                                        "target":[self.configFile],
                                        "target_type":'file',
-                                       "target_host":None,
+                                       "target_host":[None],
                                        "copy":True,
                                        "cleanup":False,
                                        "create_target":False,
@@ -526,7 +703,7 @@ class Config(dict):
         self._append_meta("setup",{"link":"task_setup_call.txt",
                                    "target":[self.callFile],
                                    "target_type":'file',
-                                   "target_host":None,
+                                   "target_host":[None],
                                    "copy":True,
                                    "cleanup":False,
                                    "create_target":False,
@@ -534,7 +711,7 @@ class Config(dict):
                                    "link_only":False})
         self._append_meta("setup",{"link":"task_setup_env.txt",
                                    "target":[self.envFile],
-                                   "target_host":None,
+                                   "target_host":[None],
                                    "target_type":'file',
                                    "copy":True,
                                    "cleanup":False,
@@ -545,7 +722,7 @@ class Config(dict):
             self._append_meta("setup",{"link":"task_setup_set.txt",
                                        "target":[self.setFile],
                                        "target_type":'file',
-                                       "target_host":None,
+                                       "target_host":[None],
                                        "copy":True,
                                        "cleanup":True,
                                        "create_target":False,
@@ -556,7 +733,7 @@ class Config(dict):
             self._append_meta("setup",{"link":"task_setup_truepath",
                                        "target":[true_path],
                                        "target_type":'file',
-                                       "target_host":None,
+                                       "target_host":[None],
                                        "copy":False,
                                        "cleanup":False,
                                        "create_target":False,
@@ -564,7 +741,7 @@ class Config(dict):
                                        "link_only":False})
         return(self.ok) 
 
-    def _createTarget(self,entry,path):
+    def _createTarget(self,entry,host,path):
         """Create target directory"""
         have_subprocess=True
         try:
@@ -574,10 +751,10 @@ class Config(dict):
         status = self.ok
         if not entry["create_target"]: return(status)
         directory = (entry["target_type"] == 'directory') and path or os.path.split(path)[0]        
-        if entry["target_host"]:
+        if host:
             make_dir = "echo \"s.mkdir_onebyone "+directory+"; if [[ -d "+directory+ \
                        " ]] ; then echo TASK_SETUP_SUCCESS ; else echo TASK_SETUP_FAILURE ; fi\" | ssh "+ \
-                       entry["target_host"]+" bash --login"
+                       host+" bash --login"
             if have_subprocess:
                 p = subprocess.Popen(make_dir,shell=True,stderr=subprocess.PIPE,stdout=subprocess.PIPE)
                 error = p.stderr.read()
@@ -589,47 +766,20 @@ class Config(dict):
             if not re.search("TASK_SETUP_SUCCESS",output):
                 status = self.error
                 if re.search("TASK_SETUP_FAILURE",output):
-                    print "Error: login to "+entry["target_host"]+" successful but "+directory+" not created"
+                    print "Error: login to "+host+" successful but "+directory+" not created"
                 else:
-                    print "Error: unable to obtain directory status on "+entry["target_host"]
+                    print "Error: unable to obtain directory status on "+host
             if len(error) > 0:
-                sys.stderr.write("task_setup.py::_createTarget() attempt to connect to "+entry["target_host"]+" returned STDERR "+error+"\n")
+                sys.stderr.write("task_setup.py::_createTarget() attempt to connect to "+host+" returned STDERR "+error+"\n")
         else:
             if not os.path.isdir(directory):
                 try:
                     mkdir_p(directory)
-                    if (self.verbosity): print "Info: created directory "+directory+" to complete target request"
+                    if (self.verbosity): print "Info 1: created directory "+directory+" to complete target request"
                 except:
                     print "Error: unable to create "+directory+" to complete target request"
                     status = self.error                    
         return(status)
-
-    def _getTruePath(self,node):
-        """Get the true path of a file/directory"""
-        have_subprocess=True
-        try:
-            import subprocess
-        except ImportError:
-            have_subprocess=False            
-        try:
-            get_true_path = "true_path "+node
-            if have_subprocess:
-                p = subprocess.Popen(get_true_path,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-                true_src = p.stdout.read()                
-            else:
-                (stdin,stdout_stderr) = os.popen4(get_true_path,'r')
-                true_src = stdout_stderr.read()
-                stdin.close()
-                stdout_stderr.close()
-            if true_src == '(null)' or not true_src or re.search('No such file or directory$',true_src,re.M) or \
-                   re.search('Probleme avec le path',true_src):
-                true_src = node
-        except OSError:
-            if (os.path.exists(node)):
-                print "Error: true_path does not exist or returned an error for "+src_file
-                status = self.error
-            true_src = node            
-        return(true_src)
 
     def _parseSectionHead(self,head):
         """Parse section header into individual attributes"""
@@ -698,13 +848,15 @@ class Config(dict):
             fd.write('#<'+section+'>\n')
             for entry in self["sections"][section]:
                 append = (entry["target_type"] == 'directory') and '/' or ''
-                host = (entry["target_host"]) and entry["target_host"]+':' or ''
-                fd.write('# '+entry["link"]+append+' '+host+':'.join(entry["target"])+'\n')
+                target = ''
+                for i in range(0,len(entry["target"])):
+                    host = (entry["target_host"][i]) and entry["target_host"][i]+':' or ''
+                    target += ' '+host+entry["target"][i]
+                fd.write('# '+entry["link"]+append+' '+target+'\n')
             fd.write('#</'+section+'>\n')
     
     def link(self):
         """Perform subdirectory creation and linking operations"""
-        import glob
         have_subprocess=True
         try:
             import subprocess
@@ -719,22 +871,21 @@ class Config(dict):
             sub_status = self._subdir_setup(abs_subdir)
             if sub_status != self.ok: return(sub_status)
             for entry in self["sections"][section]:
-                if len(entry["target"]) == 0:
-                    print "Error: empty target for "+entry["link"]+" ... skipping"
+                if (int(self.verbosity) >= 2): startTime=time()
+                line = LinkFile(entry["link"],entry["target_host"],entry["target"],entry["link_only"],verbosity=self.verbosity)
+                if len(line.target) == 0:
+                    print "Error: empty target for "+line.link+" ... skipping"
                     status = self.error
                     continue
                 link_only = entry["link_only"]
-                src = []                
-                for target in entry["target"]:
-                    src.extend(glob.glob(target))                    
                 dest = os.path.join(abs_subdir,entry["link"])
                 if not os.path.isdir(os.path.dirname(dest)):
                     mkdir_p(os.path.dirname(dest))                    
                 if os.path.islink(dest): os.remove(dest)
-                dest_is_dir = False                
-                if len(src) == 0:
-                    src.extend(entry["target"])                    
-                elif entry["target_type"] == 'directory' and not link_only or len(src) > 1:
+                dest_is_dir = False
+                if len(line.src) == 0:
+                    line.rephost()
+                elif entry["target_type"] == 'directory' and not link_only or len(line.src) > 1:
                     dest_is_dir = True
                     if not os.path.isdir(dest):
                         try:
@@ -743,67 +894,51 @@ class Config(dict):
                             print "Error: could not create "+section+" subdirectory "+dest
                             dest_is_dir = False
                             status = self.error
-                for src_file in src:
+                            
+                # Process each file on the line separately
+                for i in range(len(line.src)-1,-1,-1):
+
+                    # Retrieve information about the source file
+                    true_src_file = line.true_src_file[i]
+                    src_file_prefix = line.src_file_prefix[i]
+
+                    # Retrieve information about the destination
                     if dest_is_dir and not link_only:
-                        dest_file = os.path.join(dest,os.path.basename(src_file))
+                        dest_file = os.path.join(dest,os.path.basename(line.src[i]))
                     else:
                         dest_file = dest
                     dest_path_short = dest_file.replace(self.taskdir,'')
-                    src_file_prefix = entry["target_host"] and entry["target_host"]+':' or ''
-                    true_src_file = self._getTruePath(src_file)
-
-                    # Retreive information about remote source file
-                    remote_file_type = ''
-                    if entry["target_host"]:
-                        check_file = "ssh "+entry["target_host"]+" 'if [[ -d "+true_src_file+ \
-                                     " ]] ; then echo 2 ; elif [[ -f "+true_src_file+ \
-                                     " ]] ; then echo 1 ; else echo 0 ; fi'"
-                        if have_subprocess:
-                            p = subprocess.Popen(check_file,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-                            output = p.stdout.read()
-                            error = p.stderr.read()
-                        else:
-                            (stdin,stdout,stderr) = os.popen3(check_file,'r')
-                            output = stdout.read()
-                            error = stderr.read()
-                        if len(error) > 0:
-                            warnline = "Warning: STDERR returned from "+entry["target_host"]+" is "+error
-                            sys.stderr.write(warnline+'\n')
-                            if (self.verbosity): print warnline
-                        if len(output) > 0:
-                            if int(output) == 1:
-                               remote_file_type = 'file'
-                            elif int(output) == 2:
-                               remote_file_type = 'directory'
-                            else:
-                                if not link_only:
-                                    print "Error: required file "+true_src_file+" does not exist on host "+entry["target_host"]
-                                    status = self.error
-                        else:
-                            print "Error: unable to login to target host "+entry["target_host"]+". See previous error statement for STDERR details."
-                            status = self.error
 
                     # Take care of creating directory links
-                    if os.path.isdir(true_src_file) or remote_file_type is 'directory':
+                    if os.path.isdir(true_src_file) or line.remote_file_type[i] is 'directory':
                         if entry["target_type"] != 'directory':
                             if (self.verbosity): print "Warning: "+entry["target_type"]+" link "+entry["link"]+ \
-                               " refers to a directory target "+str(entry["target"])
+                               " refers to a directory target "+str(entry["target"])                                
+                        if os.path.islink(dest_file):
+                            print "Warning: updating directory link to "+dest_path_short+" => "+src_file_prefix+true_src_file+" (previous target was "+os.readlink(dest_file)+")"
+                            os.remove(dest_file)
                         try:
-                            os.symlink(path2host(entry["target_host"],true_src_file),dest_file)
-                            if (self.verbosity): print "Info: linked directory "+dest_path_short+" => "+src_file_prefix+true_src_file
+                            os.symlink(path2host(line.host[i],true_src_file),dest_file)
+                            if (self.verbosity): print "Info 1: linked directory "+dest_path_short+" => "+src_file_prefix+true_src_file
                         except IOError:
                             print "Error: error creating symlink for directory "+dest_path_short+" => "+src_file_prefix+true_src_file
                             status = self.error
+                        except OSError:
+                            status = self.error
+                            if os.path.isdir(dest_file) and link_only:
+                                print "Error: multiple entries for "+dest_path_short+" in the "+section+" section are not supported"
+                            else:
+                                raise
 
                     # Take care of creating file links or copies
                     else:                        
                         isfile = True
-                        if remote_file_type is not 'file':
+                        if line.remote_file_type[i] is not 'file':
                             try:
                                 fd = open(true_src_file,'r')
                             except IOError:
                                 isfile = False
-                        if isfile and entry["target_type"] != 'file' and len(src) == 1:
+                        if isfile and entry["target_type"] != 'file' and len(line.src) == 1:
                             if (self.verbosity): print "Warning: "+entry["target_type"]+" link "+entry["link"]+ \
                                "/ refers to a file target "+str(entry["target"])
                         if isfile or link_only:
@@ -817,21 +952,22 @@ class Config(dict):
                                         link_type = "copied"
                                 else:
                                     if entry["create_target"]:
-                                        status_create = self._createTarget(entry,true_src_file)
+                                        status_create = self._createTarget(entry,line.host[i],true_src_file)
                                         if status == self.ok: status = status_create
-                                        true_src_file = self._getTruePath(true_src_file)
+                                        true_src_file = getTruePath(true_src_file,self.verbosity)
                                     if os.path.islink(dest_file):
-                                        print "Warning: overwriting existing link to "+dest_file+" with "+src_file_prefix+true_src_file
+                                        print "Warning: updating file link to "+dest_path_short+" => "+src_file_prefix+true_src_file+" (previous target was "+os.readlink(dest_file)+")"
                                         os.remove(dest_file)
-                                    os.symlink(path2host(entry["target_host"],true_src_file),dest_file)
+                                    os.symlink(path2host(line.host[i],true_src_file),dest_file)
                                     link_type = "linked"
-                                if (self.verbosity): print "Info: "+link_type+" file "+dest_path_short+" => "+src_file_prefix+true_src_file
+                                if (self.verbosity): print "Info 1: "+link_type+" file "+dest_path_short+" => "+src_file_prefix+true_src_file
                             except OSError:
                                 print "Error: error creating symlink for file "+dest_path_short+" => "+src_file_prefix+true_src_file
                                 status = self.error
                         else:
                             print "Error: unable to link "+dest_path_short+" => "+src_file_prefix+true_src_file+" ... source file is unavailable"
                             status = self.error
+                if (int(self.verbosity) >= 2): print("Info 2: Link creation time: " + str( time() - startTime))
             if (self.verbosity): print "  </"+section+">"
         return(status)
 
@@ -843,8 +979,8 @@ if __name__ == "__main__":
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("-b","--base",dest="basedir",default='.',
                       help="task base DIRECTORY",metavar="DIRECTORY")
-    parser.add_option("-v","--verbose",dest="verbose",action="store_true",
-                      help="verbose runtime output",default=False)
+    parser.add_option("-v","--verbose",dest="verbose",action="count",
+                      help="verbose runtime output",default=0)
     parser.add_option("-c","--clean",dest="clean",action="store_true",
                       help="clean task directory before setup",default=False)
     parser.add_option("-r","--force",dest="force",action="store_true",
