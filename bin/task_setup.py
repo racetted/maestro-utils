@@ -205,6 +205,7 @@ def resolveKeywords(entry,delim_exec='',set=None,verbose=False,internals={}):
 
 def getTruePath(node,verbosity):
     """Get the true path of a file/directory"""
+    if node == "": return ""  
     have_subprocess=True
     if (int(verbosity) >= 2): startTime=time()
     try:
@@ -955,6 +956,9 @@ class Config(dict):
                                         status_create = self._createTarget(entry,line.host[i],true_src_file)
                                         if status == self.ok: status = status_create
                                         true_src_file = getTruePath(true_src_file,self.verbosity)
+                                        if true_src_file == "":
+                                           print "Error: attempting to create link to empty target string."
+                                           status = self.error
                                     if os.path.islink(dest_file):
                                         print "Warning: updating file link to "+dest_path_short+" => "+src_file_prefix+true_src_file+" (previous target was "+os.readlink(dest_file)+")"
                                         os.remove(dest_file)

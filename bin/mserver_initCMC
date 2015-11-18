@@ -1,0 +1,127 @@
+#!/usr/bin/env ksh
+
+#/* Part of the Maestro sequencer software package.
+# * Copyright (C) 2011-2015  Operations division of the Canadian Meteorological Centre
+# *                          Environment Canada
+# *
+# * Maestro is free software; you can redistribute it and/or
+# * modify it under the terms of the GNU Lesser General Public
+# * License as published by the Free Software Foundation,
+# * version 2.1 of the License.
+# *
+# * Maestro is distributed in the hope that it will be useful,
+# * but WITHOUT ANY WARRANTY; without even the implied warranty of
+# * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# * Lesser General Public License for more details.
+# *
+# * You should have received a copy of the GNU Lesser General Public
+# * License along with this library; if not, write to the
+# * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# * Boston, MA 02111-1307, USA.
+# */
+
+
+# Acquire new maestro version
+if [[ -z $SEQ_MAESTRO_SHORTCUT ]]; then 
+  echo "SEQ_MAESTRO_SHORTCUT variable should normally exported. Please load the maestro package properly."
+  exit 1
+fi
+
+$SEQ_MAESTRO_SHORTCUT
+
+printf "\nEnter a machine where you will run your maestro server [default maestro-server-2]: "
+read server_host_entered 
+server_host=${server_host_entered:-maestro-server-2}
+
+printf "\nEnter a machine where you will check for your maestro server [default $TRUE_HOST]: "
+read host_entered 
+hcron_destination=${host_entered:-$TRUE_HOST}
+
+# Create server configuration
+printf "\nEnter a log directory visible from ${server_host} [default $HOME/tmp/mserver]: "
+read logdir_entered
+logdir=${logdir_entered:-${HOME}/tmp/mserver}
+ssh ${server_host} mkdir -p ${logdir}
+printf "\nEnter a web-visible directory [default $HOME/public_html]: "
+read webdir_entered
+webdir=${webdir_entered:-${HOME}/public_html}
+ssh ${server_host} mkdir -p ${webdir}
+printf "\nEnter an email address for error reporting [default $USER@ec.gc.ca]: "
+read user_email
+to_email=${user_email:-${USER}@ec.gc.ca}
+printf "\nEnter a carbon copy email address for error reporting [default none]: "
+read copy_email
+if [[ -n $copy_email ]]; then 
+   cc_email="cc=\"${copy_email}\""
+fi
+
+cat > ${HOME}/.suites/mconfig.xml <<EOF
+<mserver>
+  <!-- config file for the mserver  -->
+  <log>${logdir}</log>
+  <web>${webdir}</web>
+  <!-- debug_zone = 0  no debugging  
+       debug_zone = 1  worker process : open & closed client
+       debug_zone = 2  worker process : transanction for clients
+       debug_zone = 3  not yet  -->
+  <debug_zone>1</debug_zone>
+  <!-- Worker(process) Parametres  -->
+  <pparams  maxClientPerProcess="25" maxNumOfProcess="4"/>
+   
+  <!-- Email reporting --> 
+  <email to="${to_email}" ${cc_email} />
+
+  <!-- Log cleanup (in hours) --> 
+  <cleanlog controller="96" eworker="72" tworker="72" dpmanager="96" />
+
+  <!-- Dependency Parametres in poll-freq:sec. dependencyTimeOut=hrs -->
+  <dparams  poll-freq="60"  dependencyTimeOut="24" />
+  
+  <!-- Port scanning range (not used yet) --> 
+  <portrange  min="9006" max="9999" />
+  
+</mserver>
+EOF
+
+if [[ ! -f $HOME/.maestrorc ]] ; then 
+   printf "\nPreferences file not found. Copying default maestrorc preferences. ($HOME/.maestrorc)\n"
+   cp $SEQ_UTILS_BIN/../data/.maestrorc $HOME/ 
+fi 
+
+# Hcron setup
+printf "\nHost type to use for hcron:\n"
+while :
+do
+  select option in development operations; do
+    case $REPLY in
+      1) 
+        hcron_server=cron-dev1.cmc.ec.gc.ca
+	break 2
+	;;
+      2)
+        hcron_server=hcron1.cmc.ec.gc.ca
+	break 2
+	;;
+    esac
+  done
+done
+mkdir -p ~/.hcron/${hcron_server}/events/maestro/
+cat > ~/.hcron/${hcron_server}/events/maestro/mserver.hcron <<EOF
+as_user=${USER}
+host=${hcron_destination}
+command=echo "$SEQ_MAESTRO_SHORTCUT; export SEQ_MAESTRO_SHORTCUT='$SEQ_MAESTRO_SHORTCUT';mserver_check -m ${server_host}" | bash --login
+notify_email=
+notify_message=
+when_month=*
+when_day=*
+when_hour=*
+when_minute=0-55/15
+when_dow=*
+EOF
+ssh ${hcron_server} hcron-reload
+
+# Server selection and launch
+grep ^SEQ_LOGGING_MECH ~/.maestrorc || echo "SEQ_LOGGING_MECH=server" >>~/.maestrorc
+
+printf "\nChecking if mserver process is running on host $server_host. Launching if not.\n"
+mserver_check -m ${server_host}

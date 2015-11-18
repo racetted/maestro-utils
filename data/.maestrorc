@@ -1,0 +1,117 @@
+###### configuration used by maestro ##############
+# auto_msg_display: modifies the automatic display of message center in the gui
+# true: gui autodisplay msg center
+# false: no autodisplay  
+auto_msg_display = false
+
+# auto_launch: modifies the automatic launch of experiment windows in overview mode
+#              only used for users monitoring operational suites
+# true: gui auto launch experiment windows in overview mode
+# false: no auto launch
+auto_launch = false
+
+# show_abort_type: activate/deactivate the message filter in message center
+# true: gui show abort msg in msg center
+# false: filter out abort in msg center
+show_abort_type = true
+show_event_type = true
+show_info_type = true
+
+# node_display_pref: extra info to display on node boxes in experiment flow
+# supported values normal | catchup | cpu | machine_queue | memory | mpi | wallclock
+#node_display_pref = catchup
+node_display_pref = normal
+
+# Experiment root directories: where user ALL experiments are stored
+# a User can specfy multiple repositories if his experiments spans over multiple dirs
+My_experiments=
+
+# text viewer: viewer to be used for listings, node config, node batch, etc
+# possible values can be default|vi|emacs|kate or others but non tested
+# if not default, the viewer will be started in
+# a console defined by the default_console config
+#text_viewer= default 
+#text_viewer= emacs --no-windows
+#text_viewer= emacs
+#text_viewer= kate -u -s maestro_kate_session
+text_viewer=gvim
+
+# default_console: console to be used to display text files
+# supported: konsole (default) | xterm | etc
+# for xterm and konsole make sure the "-e" appears at the end
+#default_console = xterm -e
+default_console = konsole -e
+
+# this configuration refers to a tmp directory that
+# is mainly used by the gui to store temp files for
+# viewing text files. By default, the files are stored  in
+# /tmp/$USER/$pid but you can redirect it to another location.
+# This can be useful when viewing compressed listings
+# that needs to be decompressed first; these files can
+# be quite big in size. Maestro will create a tmp directory
+# under the specified one and deletes it when the application exits
+#
+# ATTENTION: put the absolute path; don't use env variables as they
+# are not expanded
+# user_tmp_dir = /users/dor/afsi/sul/listings
+ user_tmp_dir = default
+
+# the console will always be displayed on top when new data are available...
+# unless this variable is set to false
+mc_show_console = false
+
+# used by xflow_overview to know list of suites/experiments to monitor
+#suites_file = /home/binops/afsi/ops/xflow.suites.xml
+
+# maestro-center version control system
+# the name will be used as tooltip 
+# vcs_name is mandatory for vcs to appear in maestro-center
+vcs_app_name = git
+
+# optional: path to the cvs gui if not in the default path
+vcs_path = /usr/bin/git gui
+
+# Browser
+browser = firefox
+
+# User can configure his tabs
+navtabs=My_experiments
+
+# background image for overview and flow windows
+background_image=
+
+# size of xflow window
+flow_geometry = 800x600
+
+# Icons Used for Experiments in xm 
+#  different values  : xp | note1 | note2 | thunder | Xp
+exp_icon =xp
+
+# Xflow scale default when opening xflow_overview and xflow. Default 1. 
+# Possible values 1 | 2 
+xflow_scale=1
+
+# Compress listing with gzip?
+# will not compress if set to false. Anything else will result in compression. 
+compress_listing=true
+
+# Number of threads started by overview.
+overview_num_threads=4
+
+# xflow will launch a flow when detecting new
+# datestamp log file
+# valid values are 
+# "main" : launches new flow in same window
+# "new"  : launches new flow in new window
+xflow_new_datestamp_launch=new
+
+# user plugin list, colon-separated
+#overview_plugin_list=/users/dor/afsi/dor/tmp/test.xo-plugin:/users/dor/afsi/dor/tmp/test2.xo-plugin
+#xflow_plugin_list=/home/ordenv/ssm-domains/ssm-setup-1.0/dot-profile-setup_1.0_multi/notshared/data/ssm_domains/ENV/plugins/mstat/all/bin/mstat.xf-plugin
+
+# SEQ_LOGGING_MECH is the default action by maestro to use the mserver process to do logging and state verifications
+# possible values: server | nfs 
+SEQ_LOGGING_MECH=server
+
+# overview_check_exp_idle turns on the exp_idle check for xflow_overview which will send out warning when an experiment seems idle for a given amount of time, configurable in ExpOptions.xml  
+overview_check_exp_idle=false
