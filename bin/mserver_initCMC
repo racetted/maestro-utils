@@ -55,6 +55,8 @@ if [[ -n $copy_email ]]; then
    cc_email="cc=\"${copy_email}\""
 fi
 
+mkdir ${HOME}/.suites
+
 cat > ${HOME}/.suites/mconfig.xml <<EOF
 <mserver>
   <!-- config file for the mserver  -->
@@ -86,6 +88,15 @@ EOF
 if [[ ! -f $HOME/.maestrorc ]] ; then 
    printf "\nPreferences file not found. Copying default maestrorc preferences. ($HOME/.maestrorc)\n"
    cp $SEQ_UTILS_BIN/../data/.maestrorc $HOME/ 
+fi 
+
+if [[ ! -f $HOME/.suites/default_ressources ]] ; then
+   printf "\nDefault resources.def file not found. What machine / cluster do you submit most of your jobs to?: \n"
+   read default_host 
+   cat > ~/.suites/default_ressources <<EOF
+   SEQ_DEFAULT_MACHINE=$default_host 
+EOF
+
 fi 
 
 # Hcron setup
