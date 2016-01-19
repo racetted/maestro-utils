@@ -50,11 +50,11 @@ function viewfile
    if [[ ${source_file} != "" ]]; then
      if [[ -e ${source_file} ]] ; then
 	 ln -s ${source_file} ${tmp_file}
-         [[ -n `file $(true_path ${source_file}) | grep 'gzip compressed'` ]] && isCompressed=1
+         [[ -n `file $(true_path ${source_file}) | grep 'gzip'` ]] && isCompressed=1
      else
 	 host=${source_file##*@}
 	 scp -q $host:$source_file ${tmp_file} 2>/dev/null || scp -q $host:${source_file%%@*} ${tmp_file}
-         [[ -n `file ${tmp_file} | grep 'gzip compressed'` ]] && isCompressed=1
+         [[ -n `file ${tmp_file} | grep 'gzip'` ]] && isCompressed=1
      fi
      if [[ -e ${tmp_file} ]]; then
 	 found=1
