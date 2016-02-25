@@ -13,6 +13,7 @@ ssm: profile.sh
 	fi;
 	cp -r $(SWDEST)/bin $(SSMPACKAGE);
 	cp -r $(SWDEST)/lib $(SSMPACKAGE);
+	cp -r $(SWDEST)/data $(SSMPACKAGE);
 	cp ../Makefile $(SSMPACKAGE);
 	cp ../LICENSE.txt $(SSMPACKAGE);
 	cp Makefile $(SSMPACKAGE)/ssm;
