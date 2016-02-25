@@ -55,7 +55,7 @@ if [[ -n $copy_email ]]; then
    cc_email="cc=\"${copy_email}\""
 fi
 
-mkdir ${HOME}/.suites
+mkdir -p ${HOME}/.suites
 
 cat > ${HOME}/.suites/mconfig.xml <<EOF
 <mserver>
@@ -90,11 +90,11 @@ if [[ ! -f $HOME/.maestrorc ]] ; then
    cp $SEQ_UTILS_BIN/../data/.maestrorc $HOME/ 
 fi 
 
-if [[ ! -f $HOME/.suites/default_ressources ]] ; then
+if [[ ! -f $HOME/.suites/default_resources.def ]] ; then
    printf "\nDefault resources.def file not found. What machine / cluster do you submit most of your jobs to?: \n"
    read default_host 
-   cat > ~/.suites/default_ressources <<EOF
-   SEQ_DEFAULT_MACHINE=$default_host 
+   cat > ~/.suites/default_resources.def<<EOF
+SEQ_DEFAULT_MACHINE=$default_host 
 EOF
 
 fi 
