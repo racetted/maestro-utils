@@ -60,7 +60,7 @@ else
 fi
 
 # time stamp 16:30:18_28Jan2015
-timestamp=$(date +"%T_%d%b%Y")
+timestamp=$(date +"%Y%m%d%H%M%S")
 
 workpath=/${n}${ext}
 sourceFile=${SEQ_EXP_HOME}/hub/${mach}/work/${datestamp}${workpath}
