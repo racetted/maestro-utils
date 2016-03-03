@@ -121,7 +121,8 @@ time_dest=${dest}.${datestamp}.`date +%T`
 rm -f $time_dest
 mkdir -p $dest_dir
 if [[ $? != 0 ]]; then
-    nodelogger -n $n $loopargs -s info -m "nodetracer error: cannot create directory $dest_dir"
+    nodelogger -n $n $loopargs -s abort -m "nodetracer error: cannot create directory $dest_dir"
+    exit 1
 fi
 
 #compress listing? 
