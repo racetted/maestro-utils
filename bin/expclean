@@ -27,7 +27,7 @@ eval `cclargs $0 \
   -t        ""                    ""                           "[Real-Time deletion value   ]" \
   -d        ""                    ""                           "[Datestamp deletion value   ]" \
   -v        ""                    "1"                          "[Verbose            ]" \
-  -l        ""                    "1"                          "[Delete logs too? ]" \
+  -l        ""                    "1"                          "[Delete logs and stats too? ]" \
   -m        ""                    "$TRUE_HOST"                 "[Machine to delete listings  ]" \
   -h        ""                    ""                           "[Display help       ]" \
   ++ $arguments`                                                                                                                                                                                                                   
@@ -61,9 +61,11 @@ if [[ -n $d ]]; then
     find $e/sequencing/ -name "*$d*" -print -exec rm -rf {} \; 
   
     if [[ "$l" == "1" ]]; then 
-        echo "Cleaning log $e/logs/${d}_nodelog and ${d}_toplog"
+        echo "Cleaning logs and stats: $e/logs/${d}_nodelog and ${d}_toplog, $e/stats/${d} and ${d}_avg "
         rm -f $e/logs/${d}_nodelog
         rm -f $e/logs/${d}_toplog
+        rm -f $e/stats/${d}
+        rm -f $e/stats/${d}_avg
     fi
  
     echo "Cleaning latest listings for date $d" 
@@ -103,6 +105,8 @@ if [[ -n $t ]]; then
     if [[ "$l" == "1" ]]; then 
         echo "Cleaning log $e/logs/"
         find $e/logs/ -maxdepth 1 -not -name ".gitignore" -type f -mtime +$t -print -exec rm -f {} \; 
+        echo "Cleaning stats $e/stats/"
+        find $e/stats/ -maxdepth 1 -not -name ".gitignore" -type f -mtime +$t -print -exec rm -f {} \; 
     fi
  
     echo "Cleaning latest listings older than $t day(s)" 
