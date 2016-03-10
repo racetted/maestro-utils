@@ -94,7 +94,7 @@ if options.listings:
 
 # Check for default links
 try:
-    machs=os.listdir(options.linkdir)
+    machs=[mach for mach in os.listdir(options.linkdir) if os.path.islink(os.path.join(options.linkdir,mach))]    
 except OSError:
     sys.stderr.write(options.linkdir+' is not a valid default link directory.\n')
     sys.exit(1)
@@ -138,20 +138,27 @@ for mach in machs:
         except OSError:
             sys.stderr.write('Unable to link '+link+'.\n')
             sys.exit(1)
-        if options.verbose: sys.stdout.write('Linked '+link+' => '+target_append+'\n')
+        if options.verbose: sys.stdout.write('Linked '+link+' => '+target_append+'\n')            
         if create:
             subs = [os.path.join(target,sub) for sub in hub.subs]
             if subs:
-                cmd="ssh "+mach+" 'mkdir -p "+" ".join(subs)+"; if [[ ! -d "+" && -d ".join(subs)+" ]] ; then echo 1 ; else echo 0 ; fi'"
+                cmd="ssh -o 'ConnectTimeout 5' "+mach+" 'mkdir -p "+" ".join(subs)+"; if [[ ! -d "+" && -d ".join(subs)+" ]] ; then echo 1 ; else echo 0 ; fi'"
                 p=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=True)
                 stderr=p.stderr.read()
                 if len(stderr) > 0:
                     sys.stderr.write('Warning: STDERR returned from '+mach+' is '+stderr)
-                if int(p.stdout.read()) == 0:
-                    if options.verbose:
-                        for sub in subs:
-                            sys.stdout.write('Created '+mach+':'+sub+'\n')
-                else:
+                creation_error = False
+                try:
+                    if int(p.stdout.read()) == 0:
+                        if options.verbose:
+                            for sub in subs:
+                                sys.stdout.write('Created '+mach+':'+sub+'\n')
+                    else:
+                        creation_error = True
+                except:
+                    creation_error = True
+                if creation_error:
                     sys.stderr.write('Warning: Unable to create local hub on '+mach+'\n')
+                        
 
                                  
