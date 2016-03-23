@@ -89,8 +89,8 @@ nodeLeaf=${nodeLeaf%.*}
 test $nodeExt = $nodeLeaf && nodeExt=""
 
 ### pad dates to 14 date characters by multiplying by base 10.
-sdate=`echo "$sdate*10^(14-${#sdate})"|bc`
-edate=`echo "$edate*10^(14-${#edate})"|bc`
+sdate=$(($sdate*10**(14-${#sdate})))
+edate=$(($edate*10**(14-${#edate})))
 
 if [[ $history != "" ]]; then
     formatted_date="${edate:0:4}-${edate:4:2}-${edate:6:2} ${edate:8:2}:${edate:10:2}:${edate:12:2}"
