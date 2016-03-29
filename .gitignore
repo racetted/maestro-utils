@@ -1,2 +1,6 @@
 ssm/profile*
 ssm/maestro-utils*
+*.swp
+*.swn
+*.swo
+*~
