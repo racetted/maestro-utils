@@ -123,11 +123,12 @@ def mkdir_p(path):
                              +path+': '+str(sys.exc_info())+"\n")
             raise
 
-def which(name,verbose=True):
+def which(name,path=None,verbose=True):
     """Duplicates the functionality of UNIX 'which' command"""    
     if re.search('/',name):
-        return(name)
-    for dir in re.split(':',os.environ['PATH']):
+        return(name)    
+    bin_path = path and path or os.environ['PATH']
+    for dir in re.split(':',bin_path):
         fullname=os.path.join(dir,name)
         try:
             if os.path.isfile(fullname):
@@ -444,6 +445,12 @@ class Section(list):
             sys.stderr.write(warnline)
             if (self.verbosity): print(warnline)
             return(False)
+        bin_path = None
+        if search_path:
+            try:
+                bin_path = self.set['PATH']
+            except:
+                pass
         lastSlash = re.compile('/$',re.M)
         noval = re.compile('^\s*[\'\"]*<no\svalue>',re.M)
         comment = re.compile('^#',re.M)
@@ -475,7 +482,7 @@ class Section(list):
                     entry["target"].append(target_split["path"][i])
             entry["target_type"] = (lastSlash.search(rawLink) or len(entry["target"]) > 1) and 'directory' or 'file'        
             if search_path:
-                entry["target"] = [which(target) for target in entry["target"]]
+                entry["target"] = [which(target,path=bin_path) for target in entry["target"]]
             entry["copy"] = False
             entry["cleanup"] = False
             entry["create_target"] = False
