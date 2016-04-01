@@ -1,6 +1,7 @@
 ssm/profile*
 ssm/maestro-utils*
+# Vim swap files
 *.swp
-*.swn
 *.swo
-*~
+*.swn
+*.swm

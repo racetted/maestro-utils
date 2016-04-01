@@ -121,7 +121,8 @@ time_dest=${dest}.${datestamp}.`date +%T`
 rm -f $time_dest
 mkdir -p $dest_dir
 if [[ $? != 0 ]]; then
-    nodelogger -n $n $loopargs -s info -m "nodetracer error: cannot create directory $dest_dir"
+    nodelogger -n $n $loopargs -s abort -m "nodetracer error: cannot create directory $dest_dir"
+    exit 1
 fi
 
 #compress listing? 
@@ -132,12 +133,14 @@ fi
 if [[ "$compress" == "false" ]] ; then
     mv $i $time_dest
     if [[ $? != 0 ]]; then
-        nodelogger -n $n $loopargs -s info -m "nodetracer error: cannot move $i to $time_dest"
+        nodelogger -n $n $loopargs -s abort -m "nodetracer error: cannot move $i to $time_dest"
+        exit 1
     fi
 else
     gzip -9 -c $i > $time_dest
     if [[ $? != 0 ]]; then
-        nodelogger -n $n $loopargs -s info -m "nodetracer error: cannot compress $i to $time_dest"
+        nodelogger -n $n $loopargs -s abort -m "nodetracer error: cannot compress $i to $time_dest"
+        exit 1
     fi
 fi
 
@@ -147,12 +150,14 @@ nodeleaf="${fullnode##*/}"
 nodebranch="${fullnode%/${nodeleaf}}"
 mkdir -p ${latest_dir}/$nodebranch
 if [[ $? != 0 ]]; then
-    nodelogger -n $n $loopargs -s info -m "nodetracer error: cannot create directory ${latest_dir}/${nodebranch}"
+    nodelogger -n $n $loopargs -s abort -m "nodetracer error: cannot create directory ${latest_dir}/${nodebranch}"
+    exit 1
 fi
 rm -f $latest_dir/${fullnode}.${datestamp}.$type@*
 ln -s $time_dest $latest_dir/$fullnode.${datestamp}.$type@$TRUE_HOST
 if [[ $? != 0 ]]; then
-    nodelogger -n $n $loopargs -s info -m "nodetracer error: cannot link ${latest_dir}/${fullnode}.${datestamp}.${type}@${TRUE_HOST} to $time_dest"
+    nodelogger -n $n $loopargs -s abort -m "nodetracer error: cannot link ${latest_dir}/${fullnode}.${datestamp}.${type}@${TRUE_HOST} to $time_dest"
+    exit 1
 fi
 
 [[ $c == 1 ]] && rm -f $i
