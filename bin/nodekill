@@ -88,7 +88,14 @@ else
       done
       echo cell=$cell job_id=$job_id
       rm -f $dir/$d@$job_id
-      gmjob $cell delete $job_id
+      if [[ $(command -v jobdel) != "" ]] ; then 
+		 jobdel -c $cell $job_id
+	  elif [[ $(command -v gmjob) != "" ]] ; then  
+         gmjob $cell delete $job_id
+	  else 
+	     echo "Unable to kill job because used to delete jobs (jobdel & gmjob currently supported)."
+	     exit 1
+      fi
    else 
       echo "Record of job_id $dir/$d@$job_id no longer available. \n"
       exit 1
