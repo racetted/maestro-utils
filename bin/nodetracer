@@ -150,7 +150,7 @@ nodeleaf="${fullnode##*/}"
 nodebranch="${fullnode%/${nodeleaf}}"
 mkdir -p ${latest_dir}/$nodebranch
 if [[ $? != 0 ]]; then
-    nodelogger -n $n $loopargs -s abort -m "nodetracer error: cannot create directory ${latest_dir}/${nodebranch}"
+    nodelogger -n $n $loopargs -s abort -m "nodetracer error: cannot create directory ${latest_dir}/${nodebranch}. Listing only visible here $time_dest"
     exit 1
 fi
 rm -f $latest_dir/${fullnode}.${datestamp}.$type@*
