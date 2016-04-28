@@ -170,21 +170,22 @@ def resolveKeywords(entry,delim_exec='',set=None,verbose=False,internals={}):
                 if not vartype is 'internal':
                     try:
                         this_keyword = os.environ[keyword]
+                        vartype = 'found'
                     except KeyError:
                         vartype = 'environment'
-                        if set:
-                            try:
-                                this_keyword = set[keyword]
-                                vartype = 'found'
-                            except KeyError:
-                                vartype = 'environment/set'
-                        if vartype is not 'found':
-                            if not keyword in undef_list.saved:
-                                warnline = "Warning: "+vartype+" variable "+keyword+" undefined ... empty substitution performed"
-                                sys.stderr.write(warnline+'\n')
-                                if (verbose): print warnline
-                                undef_list(keyword)
-                            this_keyword = ''
+                    if set: 
+                        try:
+                            this_keyword = set[keyword]
+                            vartype='found'
+                        except KeyError:
+                            vartype = vartype+'/set'
+                    if vartype is not 'found':
+                        if not keyword in undef_list.saved:
+                            warnline = "Warning: "+vartype+" variable "+keyword+" undefined ... empty substitution performed"
+                            sys.stderr.write(warnline+'\n')
+                            if (verbose): print warnline
+                            undef_list(keyword)
+                        this_keyword = ''
                 elements[i] = re.sub(delim_start+keyword+delim_end,this_keyword,elements[i])
             # Final substitution attempt to support deep internal indexing
             for keyword in delim.findall(elements[i]):
