@@ -84,7 +84,7 @@ SECTION CLASS
     force            - Force action despite warnings.
 """
 
-__version__ = "0.14.1"
+__version__ = "0.15.1"
 __author__  = "Ron McTaggart-Cowan (ron.mctaggart-cowan@ec.gc.ca)"
 
 #---------
@@ -415,11 +415,11 @@ class Section(list):
             if have_subprocess:
                 p = subprocess.Popen(command_prefix+command.group(1),shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
                 error_message = p.stderr.read().rstrip('\n')
-                outbuf = p.stdout.read().rstrip('\n')
+                outbuf = p.stdout.read().rstrip('\n ')
             else:
                 (stdin,stdout,stderr) = os.popen3(command_prefix+command.group(1),'r')
                 error_message = stderr.read().rstrip('\n')
-                outbuf = stdout.read().rstrip('\n')
+                outbuf = stdout.read().rstrip('\n ')
                 stdin.close()
                 stdout.close()
                 stderr.close()                
