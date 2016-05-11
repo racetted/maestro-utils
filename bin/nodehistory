@@ -79,14 +79,15 @@ else
    fullnode=$n
 fi
 
-# the node coming in has the following pattern
-# full_nodepath.ext_value...we separate the node from
-# the extension value
-nodeContainer=${fullnode%/*}
-nodeLeaf=${fullnode##*/}
-nodeExt=${nodeLeaf##*.}
-nodeLeaf=${nodeLeaf%.*}
-test $nodeExt = $nodeLeaf && nodeExt=""
+# Parse $fullnode into nodeContainer, nodeLeaf, and nodeExt
+# fullnode has the form /path/to/node/nodeLeaf.ext where ext is defined by ext_re :
+subext_re='\(+[0-9A-Za-z^_]\+\)'                                # plus sign followed a string of [alphanumerics or '^' or '_']
+ext_re='\.'$subext_re'\+$'                                      # a dot followed by one or more subextensions at end of string
+nodeContainer=${fullnode%/*}                                    # Everything until the last slash
+nodeLeafWithExt=${fullnode##*/}                                 # Everything after the last slash
+nodeExt=$(echo $nodeLeafWithExt | grep --only-matching $ext_re) # Part of nodeLeaf matching ext_re
+nodeExt=${nodeExt#.}                                            # Remove the dot
+nodeLeaf=$(echo $nodeLeafWithExt | sed s/$ext_re//)             # nodeLeaf with extension removed.
 
 ### pad dates to 14 date characters by multiplying by base 10.
 sdate=$(($sdate*10**(14-${#sdate})))
