@@ -84,7 +84,7 @@ SECTION CLASS
     force            - Force action despite warnings.
 """
 
-__version__ = "0.15.1"
+__version__ = "0.16.0"
 __author__  = "Ron McTaggart-Cowan (ron.mctaggart-cowan@ec.gc.ca)"
 
 #---------
@@ -351,12 +351,13 @@ class Section(list):
     cleanup = False
     force = False
 
-    def __init__(self,section,set=None,cfg=None,attrib={}):
+    def __init__(self,section,set=None,cfg=None,attrib={},varcache=None):
         """Class constructor"""
         self.section = section
         self.set = set
         self.cfg = cfg
         self.attrib = attrib
+        self.varcacheFile = varcache
         no_loop = {'var':None,'steps':list('0')}
         self.loop = copy.copy(no_loop)
         if self._isType('loop'):
@@ -407,12 +408,16 @@ class Section(list):
             have_subprocess=False
         updated = [entry]
         delim = re.compile(self.delimiter_exec+'(.*?)'+self.delimiter_exec)
-        commands = delim.finditer(entry)
-        for command in commands:            
-            command_prefix = (self.cfg) and '. '+self.cfg+' >/dev/null 2>&1; ' or ''
+        shell_dot_config = (self.cfg) and '. '+self.cfg+' >/dev/null 2>&1; ' or 'true; '
+        if (self.varcacheFile):
+            shell_gen_cachefile = 'task_setup_cachegen '+self.cfg+' '+self.varcacheFile+' ; . '+self.varcacheFile+' ; '
+            command_prefix = 'if [[ -s '+self.varcacheFile+' ]] ; then . '+self.varcacheFile+' >/dev/null 2>&1 ; else '+shell_gen_cachefile+'fi ; '
+        else:
+            command_prefix = shell_dot_config
+        for command in delim.finditer(entry):            
             for var in internals.keys():
                 command_prefix = command_prefix+str(var)+'='+str(internals[var])+'; '                
-            if have_subprocess:
+            if have_subprocess:                
                 p = subprocess.Popen(command_prefix+command.group(1),shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
                 error_message = p.stderr.read().rstrip('\n')
                 outbuf = p.stdout.read().rstrip('\n ')
@@ -515,8 +520,9 @@ class Config(dict):
     force_sections = ['work','setup']              #Force the creation of these sections regardless of config file contents
     search_path_sections = ['executables','setup'] #These sections will search the PATH for non-fully-qualified targets
     ignore_sections = ['seq_scheduler']            #Ignore these sections in the configuration file
+    varcache_name = 'task_setup_varcache.txt'      #Name for environment caching in embedded commands
 
-    def __init__(self,file=None,taskdir=None,set=None):
+    def __init__(self,file=None,taskdir=None,set=None,varcache=None):
         """Class constructor"""
         self.configFile = file
         self.taskdir = taskdir
@@ -525,6 +531,7 @@ class Config(dict):
         self.sectionList = []
         self.callFile = self._createTmpFile(sys.argv)
         self.envFile = self._createTmpFile(os.environ)
+        self.varcacheFile = (varcache) and varcache or self._createTmpFile(None)
         self["file"] = file
         if set:
             self._readSetFile(set) 
@@ -540,6 +547,7 @@ class Config(dict):
         """Create and fill a temporary file, returning the file name"""
         try:
             (fdunit,filename) = tempfile.mkstemp()
+            if not contents: return(filename)
             fd = os.fdopen(fdunit,"w+b")
         except OSError:
             print "Warning: Unable to create temporary file for call statement"
@@ -709,6 +717,16 @@ class Config(dict):
                                        "create_target":False,
                                        "link_host":None,
                                        "link_only":False})
+        if self.varcacheFile:
+            self._append_meta("setup",{"link":"task_setup_varcache.txt",
+                                       "target":[self.varcacheFile],
+                                       "target_type":'file',
+                                       "target_host":[None],
+                                       "copy":True,
+                                       "cleanup":True,
+                                       "create_target":False,
+                                       "link_host":None,
+                                       "link_only":False})            
         self._append_meta("setup",{"link":"task_setup_call.txt",
                                    "target":[self.callFile],
                                    "target_type":'file',
@@ -737,6 +755,17 @@ class Config(dict):
                                        "create_target":False,
                                        "link_host":None,
                                        "link_only":False})
+        cachegen = which('task_setup_cachegen',verbose=self.verbosity)
+        if cachegen:
+            self._append_meta("setup",{"link":"task_setup_cachegen",
+                                       "target":[cachegen],
+                                       "target_type":'file',
+                                       "target_host":[None],
+                                       "copy":False,
+                                       "cleanup":False,
+                                       "create_target":False,
+                                       "link_host":None,
+                                       "link_only":False})
         true_path=which('true_path',verbose=self.verbosity)
         if true_path:
             self._append_meta("setup",{"link":"task_setup_truepath",
@@ -759,7 +788,11 @@ class Config(dict):
             have_subprocess=False     
         status = self.ok
         if not entry["create_target"]: return(status)
-        directory = (entry["target_type"] == 'directory') and path or os.path.split(path)[0]        
+        directory = (entry["target_type"] == 'directory') and path or os.path.split(path)[0]
+        if not directory:
+            print "Error: no directory specified target in request for "+entry["link"]
+            status = self.error
+            return(status)
         if host:
             make_dir = "echo \"s.mkdir_onebyone "+directory+"; if [[ -d "+directory+ \
                        " ]] ; then echo TASK_SETUP_SUCCESS ; else echo TASK_SETUP_FAILURE ; fi\" | ssh "+ \
@@ -842,7 +875,7 @@ class Config(dict):
                             currentSection = None
                         else:                            
                             headAttrib = self._parseSectionHead(head.group(2))
-                            self["sections"][currentSection] = Section(currentSection,set=self.set,cfg=self["file"],attrib=headAttrib)
+                            self["sections"][currentSection] = Section(currentSection,set=self.set,cfg=self["file"],attrib=headAttrib,varcache=self.varcacheFile)
                             self.sectionList.append(currentSection)
                 if (currentSection and not head):
                     self["sections"][currentSection].add(line,currentSection in self.search_path_sections)
@@ -918,6 +951,12 @@ class Config(dict):
                         dest_file = dest
                     dest_path_short = dest_file.replace(self.taskdir,'')
 
+                    # Check that the source file information is valid
+                    if not true_src_file:
+                        print "Error: skipping entry because no source file given for "+dest_path_short
+                        status = self.error
+                        continue
+
                     # Take care of creating directory links
                     if os.path.isdir(true_src_file) or line.remote_file_type[i] is 'directory':
                         if entry["target_type"] != 'directory':
@@ -952,7 +991,7 @@ class Config(dict):
                                "/ refers to a file target "+str(entry["target"])
                         if isfile or link_only:
                             try:
-                                if entry["copy"] and not link_only:                                    
+                                if entry["copy"] and not link_only:
                                     if entry["cleanup"]:
                                         shutil.move(true_src_file,dest_file)
                                         link_type = "moved"
@@ -975,6 +1014,7 @@ class Config(dict):
                                 if (self.verbosity): print "Info 1: "+link_type+" file "+dest_path_short+" => "+src_file_prefix+true_src_file
                             except OSError:
                                 print "Error: error creating symlink for file "+dest_path_short+" => "+src_file_prefix+true_src_file
+                                raise
                                 status = self.error
                         else:
                             print "Error: unable to link "+dest_path_short+" => "+src_file_prefix+true_src_file+" ... source file is unavailable"
@@ -998,7 +1038,9 @@ if __name__ == "__main__":
     parser.add_option("-r","--force",dest="force",action="store_true",
                       help="force action (ignore warnings)",default=False)
     parser.add_option("-e","--environment",dest="environment",default=None,
-                      help="text FILE containing the environment in which to run",metavar="FILE")
+                      help="text FILE containing the set namespace in which to run",metavar="FILE")
+    parser.add_option("","--varcache",dest="varcache",default=None,
+                      help="text FILE containing a 'sourceable' version of the set namespace",metavar="FILE")    
     parser.add_option("-d","--dry-run",dest="dryrun",action="store_true",
                       help="handle configuration file without acting on it",default=False)
     (options,args) = parser.parse_args()
@@ -1011,7 +1053,7 @@ if __name__ == "__main__":
 
     # Read, parse and act on configuration file for task setup
     undef_list = Store()
-    cfg = Config(file=cfgFile,taskdir=options.basedir,set=options.environment)
+    cfg = Config(file=cfgFile,taskdir=options.basedir,set=options.environment,varcache=options.varcache)
     cfg.setOption('cleanup',options.clean)
     cfg.setOption('force',options.force)
     cfg.setOption('verbosity',options.verbose)
