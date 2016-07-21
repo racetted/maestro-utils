@@ -57,7 +57,8 @@ launch_setup(){
 	  sleep 1
    done
    ) > /dev/null 2>&1
-   if [[ ${TASK_SETUP_NOEXEC:-0} > 0 ]] ; then
+   TASK_SETUP_NOEXEC=$(grep -E '^\s*TASK_SETUP_NOEXEC=' ${TS_setvar_file} | sed 's/.*TASK_SETUP_NOEXEC=//')
+   if [[ -n "$TASK_SETUP_NOEXEC" && ${TASK_SETUP_NOEXEC:-0} > 0 ]] ; then
       printf '** skipping TASK_SETUP execution with $TASK_SETUP_NOEXEC=%s **\n' ${TASK_SETUP_NOEXEC}
    else
       printf "** TASK_SETUP begins **\n"
