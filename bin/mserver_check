@@ -36,5 +36,11 @@ if [[ $v != "" ]] ; then
 fi 
 
 ping -q -c 1 $m || exit 1
-[[ $(madmin -i) ]] ||  ssh  $m  -t bash -l -c \"$SEQ_MAESTRO_SHORTCUT\; export SEQ_MAESTRO_SHORTCUT=\'$SEQ_MAESTRO_SHORTCUT\'\; mserver\"  
-
+madmin -i 2>/dev/null 
+isInactive=$?
+if [[ $isInactive -ne 0 ]] ; then 
+  echo "Mserver unavailable on $m, restarting..."
+  ssh  $m  -t bash -l -c \"$SEQ_MAESTRO_SHORTCUT\; export SEQ_MAESTRO_SHORTCUT=\'$SEQ_MAESTRO_SHORTCUT\'\; mserver\; sleep 1\; madmin -i\"  
+else
+  echo "Server active on $m. No action taken." 
+fi
