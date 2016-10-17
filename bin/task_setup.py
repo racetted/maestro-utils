@@ -135,7 +135,7 @@ def which(name,path=None,verbose=True):
                 if os.access(fullname,os.X_OK): return(fullname) 
         except:
             continue
-    if (verbose): print "Warning: unable to find "+name+" in path\nPATH="+os.environ['PATH']
+    if (verbose): print "Warning: unable to find "+name+" in path:\n"+bin_path
     return('')  
 
 def path2host(machine,path):
