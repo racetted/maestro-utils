@@ -25,7 +25,8 @@ arguments=$*
 eval `cclargs $0 \
   -h        ""                    ""                   "[Display help       ]" \
   -v        ""                    "1"                  "[Verbose            ]" \
-  -d        ""                    ""                   "[datestamp value]" \
+  -d        ""                    ""                   "[datestamp value YYYYMMDDhhmmss ]" \
+  -e        ""                    ""                   "[Target experiment  ]" \
   -debug    "0"                   "1"                  "[debug mode]" \
   ++ $arguments`
 
@@ -35,9 +36,13 @@ if [[ $v != "" ]] ; then
   set -x
 fi
 
-if [ ! -d "${SEQ_EXP_HOME}" ]; then
-   echo "expbegin error: Invalid path SEQ_EXP_HOME=$SEQ_EXP_HOME"
-   exit 1
+if [[ -z $e ]]; then 
+   if [[ -z $SEQ_EXP_HOME ]]; then 
+      echo Error: -e argument or SEQ_EXP_HOME must be defined.
+      exit 1
+   else  
+      e=$SEQ_EXP_HOME
+   fi
 fi
 
 if [[ -n "${SEQ_BIN}" ]] ; then
@@ -50,7 +55,7 @@ else
    maestro=$(which maestro)
 fi
 
-logfile=${SEQ_EXP_HOME}/logs/log_expbegin
+logfile=${e}/logs/log_expbegin
 printf "\ndate:$(date)" >> ${logfile}
 printf "\nnodeinfo:${nodeinfo}" >> ${logfile}
 printf "\ntictac:${tictac}" >> ${logfile}
@@ -60,12 +65,16 @@ if [[ -n "${SEQ_DATE}" ]] ; then
     printf "\nSEQ_DATE=${SEQ_DATE}" >> ${logfile}
 fi
 if [[ "${d}" = "" ]]; then
-   currentDate=$(${tictac} -f %Y%M%D%H%Min%S)
+   currentDate=$(${tictac} -f %Y%M%D%H%Min%S -e $e)
    #  get new date: +24 Hours
    formatted_date="${currentDate:0:4}-${currentDate:4:2}-${currentDate:6:2} ${currentDate:8:2}:${currentDate:10:2}:${currentDate:12:2}"
    newDate=$(date -d @$(( $(date -d  "$formatted_date" +%s)  + 24 * 60 * 60)) +%Y%m%d%H%M%S) 
 else
    ### pad dates to 14 date characters by multiplying by base 10.
+   if [[  ${#d} -gt 14 || ${#d} -lt 8 ]]  ; then
+     printf "Input date format error. Format: YYYYMMDD[HHMMSS]. Ex: 19700101000000 or 19700101.\n" 
+     exit 1
+   fi 
    newDate=$(($d*10**(14-${#d})))
 fi
 
@@ -73,12 +82,12 @@ fi
 printf "\nset new date:${tictac} -s ${newDate}" >> ${logfile}
 
 # create log file
-explogfile=${SEQ_EXP_HOME}/logs/${newDate}_nodelog
+explogfile=${e}/logs/${newDate}_nodelog
 test ! -f ${explogfile} && touch ${explogfile}
 
 # determine node to submit
-rootNode=$( ${nodeinfo} -f root )
+rootNode=$( ${nodeinfo} -f root -e $e -d $newDate )
 rootNode=${rootNode#*=}
 
 # start new run
-${maestro} -s submit -n ${rootNode} -d ${newDate} >> ${logfile} 2>&1
+${maestro} -s submit -n ${rootNode} -d ${newDate} -e $e >> ${logfile} 2>&1
