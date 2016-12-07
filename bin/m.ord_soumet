@@ -1,0 +1,41 @@
+#!/bin/bash
+#/* Part of the Maestro sequencer software package.
+# * Copyright (C) 2011-2015  Operations division of the Canadian Meteorological Centre
+# *                          Environment Canada
+# *
+# * Maestro is free software; you can redistribute it and/or
+# * modify it under the terms of the GNU Lesser General Public
+# * License as published by the Free Software Foundation,
+# * version 2.1 of the License.
+# *
+# * Maestro is distributed in the hope that it will be useful,
+# * but WITHOUT ANY WARRANTY; without even the implied warranty of
+# * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# * Lesser General Public License for more details.
+# *
+# * You should have received a copy of the GNU Lesser General Public
+# * License along with this library; if not, write to the
+# * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# * Boston, MA 02111-1307, USA.
+# */
+
+[[ "$1" == -workqueue ]] && shift && WorkQueue="$1" && shift && ExTrA='-nosubmit'
+echo Resulting ord_soumet command: ord_soumet "$@" ${ExTrA}
+ord_soumet "$@" ${ExTrA}
+status=$?
+[[ -z ${ExTrA} ]] && exit $status
+[[ -z ${WorkQueue} ]] && exit 1
+Where="$(mktemp -d $USER.XXXXXXXX)"
+cd $Where || exit 1
+mv ../lajob.tar . || exit 1
+tar xvf lajob.tar
+head -2 <GO >GO2
+mv GO2 GO
+Target="$(head -1 GO | sed 's/.* //')"
+echo "Will link to '$Target'"
+mkdir -p $WorkQueue
+bash ./GO
+ln -s $Target $WorkQueue/
+rm -f lajob.tar GO
+cd ..
+[[ -d $Where ]] && rm -rf $Where
