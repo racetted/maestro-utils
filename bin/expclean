@@ -34,6 +34,7 @@ eval `cclargs $0 \
 
 if [[ $v != "" ]] ; then  
   set -x
+  verbose_find="-print"
 fi 
 
 if [[ -z $e ]]; then 
@@ -58,7 +59,7 @@ if [[ -n $d ]]; then
     fi 
     #clean sequencing: 
     echo "Cleaning sequencing for date $d" 
-    find $e/sequencing/ -name "*$d*" -print -exec rm -rf {} \; 
+    find $e/sequencing/ -name "*$d*" $verbose_find  -exec rm -rf {} \; 
   
     if [[ "$l" == "1" ]]; then 
         echo "Cleaning logs and stats: $e/logs/${d}_nodelog and ${d}_toplog, $e/stats/${d} and ${d}_avg "
@@ -69,7 +70,7 @@ if [[ -n $d ]]; then
     fi
  
     echo "Cleaning latest listings for date $d" 
-    find $e/listings/latest -name "*$d*" -print -delete 
+    find $e/listings/latest/ -name "*$d*" $verbose_find -delete 
     
     if [[ -n $m ]] ; then
        if [[ $m == "all" ]] ; then
@@ -79,12 +80,22 @@ if [[ -n $d ]]; then
              machine=${machine_path##*/}
              echo "Current machine: $machine"
              if [[ $machine != "latest" ]]; then
-                ping -c 1 -q $machine && ssh $machine find $e/listings/$machine/ -name "*$d*" -type f -print -delete
+				if [[ -d $e/listings/$machine/ ]] ; then  
+					# can see the directory, do it locally 
+					find $e/listings/$machine/ -name "*$d*" -type f $verbose_find -delete
+				else 
+                    ping -c 1 -q $machine && ssh $machine find $e/listings/$machine/ -name "*$d*" -type f $verbose_find -delete
+                fi 
              fi
           done
        else
           echo "Clean listings on machine $m" 
-          ping -c 1 -q $m && ssh $m find $e/listings/$m/ -name "*$d*" -type f -print -delete
+			if [[ -d $e/listings/$m/ ]] ; then 
+			# can see the directory, do it locally 
+				find $e/listings/$m/ -name "*$d*" -type f $verbose_find -delete
+		    else 
+          		ping -c 1 -q $m && ssh $m find $e/listings/$m/ -name "*$d*" -type f $verbose_find -delete
+			fi
        fi 
     fi 
 fi
@@ -97,20 +108,20 @@ if [[ -n $t ]]; then
     fi
     #clean sequencing: 
     echo "Cleaning sequencing older than $t day(s)" 
-    find $e/sequencing/status/ -mindepth 1 -maxdepth 1 -type d -mtime +$t -print  -exec rm -rf {} \; 
-    find $e/sequencing/status/depends -mindepth 1 -maxdepth 1 -type d -mtime +$t -print  -exec rm -rf {} \; 
-    find $e/sequencing/status/remote_depends -mindepth 1 -maxdepth 1 -type d -mtime +$t -print -exec rm -rf {} \;  
-    find $e/sequencing/ -mindepth 2 -not -name ".gitignore" \( -type f -or -type l \) -mtime +$t -print -delete  
+    find $e/sequencing/status/ -mindepth 1 -maxdepth 1 -type d -mtime +$t $verbose_find  -exec rm -rf {} \; 
+    find $e/sequencing/status/depends -mindepth 1 -maxdepth 1 -type d -mtime +$t $verbose_find  -exec rm -rf {} \; 
+    find $e/sequencing/status/remote_depends -mindepth 1 -maxdepth 1 -type d -mtime +$t $verbose_find -exec rm -rf {} \;  
+    find $e/sequencing/ -mindepth 2 -not -name ".gitignore" \( -type f -or -type l \) -mtime +$t $verbose_find -delete  
   
     if [[ "$l" == "1" ]]; then 
         echo "Cleaning log $e/logs/"
-        find $e/logs/ -maxdepth 1 -not -name ".gitignore" -type f -mtime +$t -print -delete 
+        find $e/logs/ -maxdepth 1 -not -name ".gitignore" -type f -mtime +$t $verbose_find -delete 
         echo "Cleaning stats $e/stats/"
-        find $e/stats/ -maxdepth 1 -not -name ".gitignore" -type f -mtime +$t -print -delete  
+        find $e/stats/ -maxdepth 1 -not -name ".gitignore" -type f -mtime +$t $verbose_find -delete  
     fi
  
     echo "Cleaning latest listings older than $t day(s)" 
-    find $e/listings/latest -type l -mtime +$t -print -delete  
+    find $e/listings/latest/ -type l -mtime +$t $verbose_find -delete  
     
     if [[ -n $m ]] ; then
        if [[ $m == "all" ]] ; then
@@ -120,12 +131,21 @@ if [[ -n $t ]]; then
              machine=${machine_path##*/}
              echo "Current machine: $machine"
              if [[ $machine != "latest" ]]; then
-                ping -c 1 -q $machine && ssh $machine find $e/listings/$machine/ -type f -mtime +$t -print -delete 
+				if [[ -d $e/listings/$machine/ ]] ; then  
+					# can see the directory, do it locally 
+					find $e/listings/$machine/ -type f -mtime +$t $verbose_find -delete 
+				else
+                	ping -c 1 -q $machine && ssh $machine find $e/listings/$machine/ -type f -mtime +$t $verbose_find -delete 
+				fi
              fi
           done
        else
           echo "Clean listings on machine $m older than $t day(s)" 
-          ping -c 1 -q $machine && ssh $m find $e/listings/$m/ -type f -mtime +$t -print -delete  
+		  if [[ -d $e/listings/$m/ ]] ; then 
+       	     find $e/listings/$m/ -type f -mtime +$t $verbose_find -delete  
+    	  else 
+             ping -c 1 -q $m && ssh $m find $e/listings/$m/ -type f -mtime +$t $verbose_find -delete  
+	      fi
        fi
     fi 
 fi
