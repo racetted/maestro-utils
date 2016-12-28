@@ -80,7 +80,7 @@ cat > ${HOME}/.suites/mconfig.xml <<EOF
   <dparams  poll-freq="60"  dependencyTimeOut="24" />
   
   <!-- Port scanning range (not used yet) --> 
-  <portrange  min="5900" max="5999" />
+  <portrange  min="5900" max="6399" />
   
 </mserver>
 EOF
