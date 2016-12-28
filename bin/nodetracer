@@ -127,7 +127,7 @@ fi
 
 #compress listing? 
 if [[ -f $HOME/.maestrorc ]] ; then 
-    compress=`getdef -e ${SEQ_EXP_HOME} $HOME/.maestrorc compress_listing` 2> /dev/null 
+    compress=`getdef -e ${SEQ_EXP_HOME} $HOME/.maestrorc compress_listing 2> /dev/null`
 fi 
 
 if [[ "$compress" == "false" ]] ; then
