@@ -59,12 +59,14 @@ eval `cclargs $0 \
   -l        ""                    ""                   "[Loop argument list ]" \
   -i        ""                    ""                   "[Input listing to file    ]" \
   -d        ""                    ""                   "[datestamp value]" \
+  -e        "${SEQ_EXP_HOME}"     ""                   "[experiment home value]" \
   -c        "0"                   "1"                  "[Clean (remove) input file after save]" \
   -v        "0"                   "1"                  "[Verbose]" \
   ++ $arguments`
 
-if [ ! -d "${SEQ_EXP_HOME}" ]; then
-   echo "nodetracer error: Invalid path SEQ_EXP_HOME=$SEQ_EXP_HOME"
+
+if [ ! -d "${e}" ]; then
+   echo "nodetracer error: Invalid path SEQ_EXP_HOME=$e"
    exit 1
 fi
 
@@ -104,7 +106,7 @@ else
    loopargs=""
 fi
 
-basedir=${SEQ_EXP_HOME}
+basedir=${e}
 compress=true
 
 if [ "$type" = "abort" -o "$type" = "success" -o "$type" = "submission" ]; then
@@ -127,7 +129,7 @@ fi
 
 #compress listing? 
 if [[ -f $HOME/.maestrorc ]] ; then 
-    compress=`getdef -e ${SEQ_EXP_HOME} $HOME/.maestrorc compress_listing 2> /dev/null`
+    compress=`getdef -e ${e} $HOME/.maestrorc compress_listing 2> /dev/null`
 fi 
 
 if [[ "$compress" == "false" ]] ; then
@@ -163,6 +165,6 @@ fi
 [[ $c == 1 ]] && rm -f $i
 
 if [[ "$type" != "success" && "$type" != "submission" && "$SEQ_ABORT_EMAILS" != "" ]]; then
-  echo "To get the abort listing: \n1) Load maestro's ssm package\n2) Run commands:\n\texport SEQ_EXP_HOME=$SEQ_EXP_HOME \n\t$SEQ_UTILS_BIN/nodelister -f $time_dest"  |Mail -s "ABORT: nodename=$fullnode exp=$SEQ_EXP_HOME date=$SEQ_DATE" $SEQ_ABORT_EMAILS
+  echo "To get the abort listing: \n1) Load maestro's ssm package\n2) Run commands:\n\texport SEQ_EXP_HOME=$e \n\t$SEQ_UTILS_BIN/nodelister -f $time_dest"  |Mail -s "ABORT: nodename=$fullnode exp=$e date=$SEQ_DATE" $SEQ_ABORT_EMAILS
 fi
 
