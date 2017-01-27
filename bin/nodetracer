@@ -91,11 +91,11 @@ datestamp=${d}
 
 if [[ $l != "" ]]; then
    fullnode=`$nodeinfo -n $n -l $l -f node`
-   fullnode=`echo $fullnode | cut -d "=" -f2`
-   if [[ $fullnode = "" ]]; then
+   if [[ $? != 0 ]] ; then 
        echo nodeinfo reported a problem - exiting.
        exit 1
-   fi
+   fi 
+   fullnode=`echo $fullnode | cut -d "=" -f2`
 else
    fullnode=$n
 fi
