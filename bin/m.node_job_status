@@ -1,0 +1,148 @@
+#!/bin/bash
+
+#/* Part of the Maestro sequencer software package.
+# * Copyright (C) 2011-2015  Operations division of the Canadian Meteorological Centre
+# *                          Environment Canada
+# *
+# * Maestro is free software; you can redistribute it and/or
+# * modify it under the terms of the GNU Lesser General Public
+# * License as published by the Free Software Foundation,
+# * version 2.1 of the License.
+# *
+# * Maestro is distributed in the hope that it will be useful,
+# * but WITHOUT ANY WARRANTY; without even the implied warranty of
+# * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# * Lesser General Public License for more details.
+# *
+# * You should have received a copy of the GNU Lesser General Public
+# * License along with this library; if not, write to the
+# * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# * Boston, MA 02111-1307, USA.
+# */
+
+arguments=$*
+eval `cclargs $0 \
+  -n        ""                    ""                           "[Node         ]" \
+  -d        ""                    ""                           "[Datestamp (Default \$SEQ_DATE)     ]" \
+  -e        "${SEQ_EXP_HOME}"     ""                           "[experiment home value]" \
+  -h        ""                    ""                           "[Display help       ]" \
+  -v        "0"                   "1"                          "[Verbose mode        ]" \
+  -list     "0"                   "1"                          "[Show available jobs of the node to get status of    ]" \
+  -listall  "0"                   "1"                          "[Show all available jobs of every node         ]" \
+  -l        ""                    ""                           "[Loop argument list ]" \
+  -job_id   ""                    ""                           "[Which job_id to check status ]" \
+  ++ $arguments`
+
+test "${v}" = "1" && set -x
+
+
+if [ ! -d "${e}" ]; then
+   echo "m.node_job_status error: Invalid path SEQ_EXP_HOME=$e"
+   exit 1
+fi
+
+if [ ! -d "${e}/sequencing/jobinfo" ]; then
+   echo "nodekill error: No Such File or Directory $e/sequencing/jobinfo"
+   exit 1
+fi
+
+if [[ "${d}" = "" ]]; then
+   d=$(${SEQ_BIN}/tictac -f %Y%M%D%H%Min%S -e $e )
+fi
+
+if [[ -n "${SEQ_BIN}" ]] ; then
+   nodeinfo=${SEQ_BIN}/nodeinfo
+else
+   nodeinfo=$(which nodeinfo)
+fi
+
+if [[ $n == "" && $listall == "0" ]]; then
+    echo "Node must be defined"
+    exit 1
+fi
+
+if [[ $(command -v jobst) != "" ]] ; then 
+   command=jobst
+ elif [[ $(command -v gmjob) != "" ]] ; then  
+   command=gmjob
+ else 
+   echo "Unable to get job status because of a missing tools (jobst & gmjob currently supported)."
+   exit 1
+ fi
+
+if [[ $l != "" ]]; then
+   fullnode=`$nodeinfo -e $e -d $d -n $n -l $l -f node`
+   if [[ $? != 0 ]] ; then 
+       echo nodeinfo reported a problem - exiting.
+       exit 1
+   fi 
+   fullnode=${fullnode#*=}
+else
+   fullnode=$n
+fi
+
+if [[ $listall -eq 1 ]]; then 
+   cd  ${e}/sequencing/jobinfo && list_of_files=`find  ${e}/sequencing/jobinfo -type l -name "$d@*" ` 
+elif [[ $list -eq 1 ]]; then
+   dir=${e}/sequencing/jobinfo${fullnode%/*}
+   # cd to the directory and do the ls from there
+   name=${fullnode##*/}
+   for file in `find $dir -maxdepth 1 -type l` ; do 
+      doIappend=`readlink $file | grep -w $name` && list_of_files="$file $list_of_files" 
+   done 
+else
+   dir=${e}/sequencing/jobinfo${fullnode%/*}
+   if [[ -L  $dir/$d@$job_id ]] ; then
+      list_of_files=$dir/$d@$job_id
+   else 
+      echo "Job id $job_id no longer exists under $dir" 
+      exit 1
+   fi  
+fi 
+cell_to_return=()
+job_ids_to_return=()
+nodes_to_return=()
+nodelen=0
+idlen=0
+for job in $list_of_files; do 
+  encoded_info=$(readlink $job) || continue 
+  full_container=${job%/*}
+  container=${full_container##*/jobinfo}
+  node=${container}/${encoded_info##* }
+  [[ ${#node} > $nodelen ]] && nodelen=${#node}
+  job_id=${job##*@} 
+  [[ ${#job_id} > $idlen ]] && idlen=${#job_id}
+  cell=${encoded_info% *}
+  if [[ "${command}" == "jobst" ]] ; then 
+    # build information to look for in batch later
+    cell_to_return+=( $cell )
+    job_ids_to_return+=( $job_id )
+    nodes_to_return+=( $node )
+  elif [[ "${command}" == "gmjob" ]] ; then  
+    gmjob $cell get_status $job_id 
+  fi
+done 
+
+
+if [[ "${command}" == "jobst" && ${#job_ids_to_return[@]} -ge 1 ]] ; then 
+   jobst_output=$TMPDIR/jobst.$$ 
+   rm -f $jobst_output
+   for cell in `tr ' ' '\n' <<< "${cell_to_return[@]}" | sort -u | tr '\n' ' '` ; do 
+      jobst -c $cell >> $TMPDIR/jobst.$$
+   done 
+   output_format="%-$(($nodelen+5))s %-$(($idlen+5))s %-10s %-50s \n" 
+   printf "$output_format" "Node" "JobID" "Status" "Additional Info"  
+   printf "$output_format" "____" "_____" "______" "_______________"  
+   iterator=0 
+   for jid in ${cell_to_return[@]}; do 
+     line=$(grep ${job_ids_to_return[$iterator]} $jobst_output) 
+     if [[ $? == 0 ]] ; then  
+       jobinfo=$(echo $line | cut -f 6-8 -d " ") 
+       status=$(echo $line | cut -f 5 -d " ")
+       printf "$output_format" "${nodes_to_return[$iterator]}" "${job_ids_to_return[$iterator]}" "$status" "$jobinfo" 
+     else 
+       printf "$output_format" "${nodes_to_return[$iterator]}" "${job_ids_to_return[$iterator]}" "DEFUNCT" 
+     fi
+     iterator=$(($iterator + 1)) 
+   done 
+fi
