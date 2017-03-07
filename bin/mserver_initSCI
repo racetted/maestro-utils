@@ -68,7 +68,7 @@ cat > ${HOME}/.suites/mconfig.xml <<EOF
        debug_zone = 3  not yet  -->
   <debug_zone>1</debug_zone>
   <!-- Worker(process) Parametres  -->
-  <pparams  maxClientPerProcess="25" maxNumOfProcess="4"/>
+  <pparams  maxClientPerProcess="100" maxNumOfProcess="4"/>
    
   <!-- Email reporting --> 
   <email to="${to_email}" ${cc_email} />
