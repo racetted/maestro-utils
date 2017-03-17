@@ -31,7 +31,7 @@ $SEQ_MAESTRO_SHORTCUT
 
 printf "\nEnter a machine where you will run your maestro server [default maestro1]: "
 read server_host_entered 
-server_host=${server_host_entered:-maestro1}
+server_host=${server_host_entered:-maestro2}
 
 printf "\nEnter a machine where you will check for your maestro server [default $TRUE_HOST]: "
 read host_entered 
@@ -40,7 +40,7 @@ hcron_destination=${host_entered:-$TRUE_HOST}
 # Create server configuration
 printf "\nEnter a log directory visible from ${server_host} [default $HOME/.suites/mserver]: "
 read logdir_entered
-logdir=${logdir_entered:-${HOME}/tmp/mserver}
+logdir=${logdir_entered:-${HOME}/.suites/mserver}
 ssh ${server_host} mkdir -p ${logdir}
 printf "\nEnter a web-visible directory [default $HOME/public_html]: "
 read webdir_entered
