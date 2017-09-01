@@ -84,7 +84,8 @@ if [[ -n $d ]]; then
 					# can see the directory, do it locally 
 					find $e/listings/$machine/ -name "*$d*" -type f $verbose_find -delete
 				else 
-                    ping -c 1 -q $machine && ssh $machine find $e/listings/$machine/ -name "*$d*" -type f $verbose_find -delete
+                    remote_listing_dir=`readlink $e/listings/$machine`
+                    ping -c 1 -q $machine && ssh $machine find $remote_listing_dir -name "*$d*" -type f $verbose_find -delete
                 fi 
              fi
           done
@@ -135,7 +136,8 @@ if [[ -n $t ]]; then
 					# can see the directory, do it locally 
 					find $e/listings/$machine/ -type f -mtime +$t $verbose_find -delete 
 				else
-                	ping -c 1 -q $machine && ssh $machine find $e/listings/$machine/ -type f -mtime +$t $verbose_find -delete 
+                    remote_listing_dir=`readlink $e/listings/$machine`
+                	ping -c 1 -q $machine && ssh $machine find $remote_listing_dir -type f -mtime +$t $verbose_find -delete 
 				fi
              fi
           done
@@ -144,7 +146,8 @@ if [[ -n $t ]]; then
 		  if [[ -d $e/listings/$m/ ]] ; then 
        	     find $e/listings/$m/ -type f -mtime +$t $verbose_find -delete  
     	  else 
-             ping -c 1 -q $m && ssh $m find $e/listings/$m/ -type f -mtime +$t $verbose_find -delete  
+             remote_listing_dir=`readlink $e/listings/$m`
+             ping -c 1 -q $m && ssh $m find $remote_listing_dir -type f -mtime +$t $verbose_find -delete  
 	      fi
        fi
     fi 
