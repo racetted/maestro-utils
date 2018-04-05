@@ -217,15 +217,18 @@ def getTruePath(node,verbosity):
     try:
         get_true_path = "true_path "+node
         if have_subprocess:
-            p = subprocess.Popen(get_true_path,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+            p = subprocess.Popen(get_true_path,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             true_src = p.stdout.read()                
+            error_out = p.stderr.read()
         else:
-            (stdin,stdout_stderr) = os.popen4(get_true_path,'r')
-            true_src = stdout_stderr.read()
+            (stdin,stdout,stderr) = os.popen3(get_true_path,'r')
+            true_src = stdout.read()
+            error_out = stderr.read() 
             stdin.close()
-            stdout_stderr.close()
-        if true_src == '(null)' or not true_src or re.search('No such file or directory$',true_src,re.M) or \
-                re.search('Probleme avec le path',true_src):
+            stdout.close()
+            stderr.close()
+        if true_src == '(null)' or not true_src or re.search('No such file or directory$',true_src,re.M):
+            print "Warning: true_path on " + node + " returned " + error_out 
             true_src = node
     except OSError:
         if (os.path.exists(node)):
@@ -986,6 +989,7 @@ class Config(dict):
                                 fd = open(true_src_file,'r')
                             except IOError:
                                 isfile = False
+
                         if isfile and entry["target_type"] != 'file' and len(line.src) == 1:
                             if (self.verbosity): print "Warning: "+entry["target_type"]+" link "+entry["link"]+ \
                                "/ refers to a file target "+str(entry["target"])
