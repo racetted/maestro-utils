@@ -29,7 +29,7 @@ fi
 
 $SEQ_MAESTRO_SHORTCUT
 
-printf "\nEnter a machine where you will run your maestro server [default maestro1]: "
+printf "\nEnter a machine where you will run your maestro server [default maestro2]: "
 read server_host_entered 
 server_host=${server_host_entered:-maestro2}
 
@@ -68,7 +68,7 @@ cat > ${HOME}/.suites/mconfig.xml <<EOF
        debug_zone = 3  not yet  -->
   <debug_zone>1</debug_zone>
   <!-- Worker(process) Parametres  -->
-  <pparams  maxClientPerProcess="100" maxNumOfProcess="4"/>
+  <pparams  maxClientPerProcess="100" maxNumOfProcess="3"/>
    
   <!-- Email reporting --> 
   <email to="${to_email}" ${cc_email} />
@@ -77,7 +77,7 @@ cat > ${HOME}/.suites/mconfig.xml <<EOF
   <cleanlog controller="96" eworker="72" tworker="72" dpmanager="96" />
 
   <!-- Dependency Parametres in poll-freq:sec. dependencyTimeOut=hrs -->
-  <dparams  poll-freq="60"  dependencyTimeOut="24" />
+  <dparams  poll-freq="60"  dependencyTimeOut="48" />
   
   <!-- Port scanning range (not used yet) --> 
   <portrange  min="5900" max="6399" />
@@ -136,7 +136,11 @@ EOF
 ssh ${hcron_server} hcron-reload
 
 # Server selection and launch
-grep ^SEQ_LOGGING_MECH ~/.maestrorc || echo "SEQ_LOGGING_MECH=server" >>~/.maestrorc
+grep ^SEQ_LOGGING_MECH ~/.maestrorc >/dev/null || echo "SEQ_LOGGING_MECH=server" >>~/.maestrorc
 
 printf "\nChecking if mserver process is running on host $server_host. Launching if not.\n"
 mserver_check -m ${server_host}
+
+printf "\nSetup complete.\n"
+ 
+

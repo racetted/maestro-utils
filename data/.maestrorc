@@ -39,8 +39,8 @@ text_viewer=gvim
 # default_console: console to be used to display text files
 # supported: konsole (default) | xterm | etc
 # for xterm and konsole make sure the "-e" appears at the end
-#default_console = xterm -e
-default_console = konsole -e
+default_console = xterm -e
+#default_console = konsole -e
 
 # this configuration refers to a tmp directory that
 # is mainly used by the gui to store temp files for
@@ -54,7 +54,7 @@ default_console = konsole -e
 # ATTENTION: put the absolute path; don't use env variables as they
 # are not expanded
 # user_tmp_dir = /users/dor/afsi/sul/listings
- user_tmp_dir = default
+user_tmp_dir = default
 
 # the console will always be displayed on top when new data are available...
 # unless this variable is set to false
@@ -115,3 +115,21 @@ SEQ_LOGGING_MECH=server
 
 # overview_check_exp_idle turns on the exp_idle check for xflow_overview which will send out warning when an experiment seems idle for a given amount of time, configurable in ExpOptions.xml  
 overview_check_exp_idle=false
+
+#fonts 
+font_name_underl = 0
+font_label_size = 12
+font_name_slant = roman
+font_name_size = 12
+font_task_style = bold
+font_task_underl = 0
+font_task_slant = roman
+font_task_size = 12
+font_label_style = bold
+font_name = Verana Sans Medium
+font_label_slant = roman
+font_task = Times
+font_label = Verana Sans Medium
+font_label_underl = 0
+font_name_style = bold
+
