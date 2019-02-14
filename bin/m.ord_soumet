@@ -18,10 +18,20 @@
 # * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # * Boston, MA 02111-1307, USA.
 # */
-
+set -x 
 [[ "$1" == -workqueue ]] && shift && WorkQueue="$1" && shift && ExTrA='-nosubmit'
-echo Resulting ord_soumet command: ord_soumet "$@" ${ExTrA}
-ord_soumet "$@" ${ExTrA}
+#code to handle reservation selection
+arglist=$*
+jobcfgfile=$(echo ${arglist#*\-jobcfg} | cut -f 1 -d " ")
+datestamp=$(grep SEQ_DATE $jobcfgfile | cut -f 2 -d "=")
+experiment=$(grep SEQ_EXP_HOME $jobcfgfile| cut -f 2 -d "=")
+host=$(echo ${arglist#*\-d\ } | cut -f 1 -d " ")
+queue=$(echo ${arglist#*\-q} | cut -f 1 -d " ")
+[[ -n $queue ]] && queue="${queue}@"
+reservation_file=${experiment}/sequencing/tmpfile/${datestamp}/${queue}${host}.reservation.id
+[[ -f ${reservation_file} ]] && arg_res="-sq $(cat ${reservation_file})" 
+echo Resulting ord_soumet command: ord_soumet "$@" ${arg_res} ${ExTrA}
+ord_soumet "$@" ${arg_res} ${ExTrA}
 status=$?
 [[ -z ${ExTrA} ]] && exit $status
 [[ -z ${WorkQueue} ]] && exit 1
