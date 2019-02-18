@@ -25,47 +25,41 @@ arguments=$*
 
 eval `cclargs $0 \
   -n        ""                    ""                           "[Node               ]" \
+  -e        ""                    ""                           "[Experiment path    ]" \
   -base     "0"                   "1"                          "[Return base only   ]" \
   -ext      ""                    ""                           "[Extension          ]" \
+  -l        ""                    ""                           "[Loop Arguments     ]" \
+  -v        ""                   "1"                           "[Verbose            ]" \
   -h        ""                    ""                           "[Display help       ]" \
   ++ $arguments`
 
-if [[ -n "${SEQ_BIN}" ]] ; then
-    nodeinfo=${SEQ_BIN}/nodeinfo
-    tictac=${SEQ_BIN}/tictac
-else
-    nodeinfo=$(which nodeinfo)
-    tictac=$(which tictac)
+[[ -n $v ]] && set -x 
+
+if [[ -z $e ]]; then 
+   if [[ -z $SEQ_EXP_HOME ]]; then 
+      echo Error: -e argument or SEQ_EXP_HOME must be defined. 1>&2
+      exit 1
+   else  
+      e=$SEQ_EXP_HOME
+   fi
 fi
 
-if [[ $l != "" ]]; then largs="-l $l" ; fi
-mach=$(nodeinfo -n $n $largs | grep node.machine | cut -d "=" -f 2)
+[[ $n == "" ]] && echo "Node must be defined" 1>&2 && exit 1 
+
+[[ $l != "" ]] && largs="-l $l"
+nodeinfo_out=$TMPDIR/nodeinfo_out.$$
+nodeinfo -e $e -n $n $largs > $nodeinfo_out
+mach=$(grep node.machine $nodeinfo_out | cut -d "=" -f 2)
+[[ $ext == "" ]] && ext=$(grep node.extension $nodeinfo_out | cut -d "=" -f 2)
 
 # Construct path from base
-workpath=
+workpath="" 
 if [[ ${base} == 0 ]] ; then workpath=/${n}${ext} ; fi
 
 # Return defined workbase if found - otherwise construct it
 if [[ -n "${SEQ_WORKBASE}" ]] ; then
     echo ${mach}:${SEQ_WORKBASE}${workpath}
 else
-    if [ ! -d "${SEQ_EXP_HOME}" ]; then
-	echo "nodeout error: Invalid path SEQ_EXP_HOME=$SEQ_EXP_HOME"
-	exit 1
-    fi
-
-    if [[ $n == "" ]]; then
-	echo "Node must be defined"
-	exit 1
-    fi
-    
-    if [[ $l != "" ]]; then
-	fullnode=`$nodeinfo -n $n -l $l -f node`
-	fullnode=`echo $fullnode | cut -d "=" -f2`
-	mach=$(nodeinfo -n $n -l $l | grep node.machine | cut -d "=" -f 2)
-    else
-	fullnode=$n
-	mach=$(nodeinfo -n $n | grep node.machine | cut -d "=" -f 2)
-    fi
-    echo ${mach}:${SEQ_EXP_HOME}/hub/${mach}/work/$(tictac -f %Y%M%D%H%Min%S)${workpath}
+    echo ${mach}:${SEQ_EXP_HOME}/hub/${mach}/work/$(tictac -e $e -f %Y%M%D%H%Min%S)${workpath}
 fi
+rm -f $nodeinfo_out
